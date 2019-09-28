@@ -1,2 +1,2 @@
-# pi_code
+# code_pi
 Raspberry Pi Utilities
