@@ -1,0 +1,12 @@
+
+See https://www.raspberrypi.org/documentation/linux/usage/systemd.md
+
+sudo cp energenie_webserver.service /etc/systemd/system
+sudo systemctl start energenie_webserver.service
+
+# After changing the script in the energenie dir copy it and reload
+sudo cp energenie_webserver.service /etc/systemd/system
+sudo systemctl daemon-reload
+sudo systemctl start energenie_webserver.service
+
+sudo systemctl enable energenie_webserver.service

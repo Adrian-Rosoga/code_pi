@@ -1,0 +1,15 @@
+[Unit]
+Description=Timelapse Webserver Service
+After=network.target
+
+[Service]
+ExecStart=/home/pi/code_pi/timelapse/tlws
+WorkingDirectory=/home/pi/code_pi/timelapse
+StandardOutput=inherit
+StandardError=inherit
+#Restart=always
+Restart=no
+User=pi
+
+[Install]
+WantedBy=multi-user.target

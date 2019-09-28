@@ -1,0 +1,4 @@
+#!/bin/bash
+
+sudo pkill raspistill
+sudo pkill tl_start.py

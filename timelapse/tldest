@@ -1,0 +1,3 @@
+#!/bin/bash
+
+sudo /home/pi/code_pi/timelapse/tl_dest.py

@@ -1,0 +1,15 @@
+[Unit]
+Description=Energenie WebServer Service
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 -u energenie_webserver.py
+WorkingDirectory=/home/pi/code_pi/energenie
+StandardOutput=inherit
+StandardError=inherit
+#Restart=always
+Restart=no
+User=pi
+
+[Install]
+WantedBy=multi-user.target

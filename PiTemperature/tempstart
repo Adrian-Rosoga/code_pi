@@ -1,0 +1,28 @@
+#!/bin/bash
+
+DIR=/home/pi/code_pi/PiTemperature
+
+cd $DIR
+
+#
+# Stopping motion
+#
+sudo service motion stop
+
+#
+# Smart Temperature Server
+#
+echo "Starting the Smart Temperature Server..."
+sudo ./load_gpio.sh
+
+# Need sudo if the sqlite db is on the usb stick
+
+#nohup node server.js >> nohup_server_js.out &
+sudo nohup node ./server.js 2>&1 > /dev/null &
+
+#
+# Dumb Temperature Server
+#
+echo "Starting the Simple Temperature Server..."
+#nohup RPiWebThermometer.py >> nohup_RPiWebThermometer_py.out &
+nohup ./RPiWebThermometer.py 2>&1 > /dev/null &

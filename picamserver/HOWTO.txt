@@ -1,0 +1,101 @@
+=== Todo
+
+- Use sendfile()
+- Make favicon.ico work
+- Use TCP_CORK or similar to avoid multiple calls
+
+=== Info
+
+CR = '\r' = 0xd
+LF = '\n' = 0xa
+Windows uses \r\n
+Linux uses \n
+Standard asks HTTP uses \r\n but should tolerate \n only.
+
+=== Other
+
+
+<HTML>
+<HEAD>
+<TITLE>Last&nbsp;Timelapse&nbsp;Picture</TITLE>
+<META HTTP-EQUIV=PRAGMA CONTENT=NO-CACHE>
+<META HTTP-EQUIV=EXPIRES CONTENT=-1>
+<META HTTP-EQUIV=REFRESH CONTENT=10>
+</HEAD>
+<BODY BGCOLOR="BLACK" BACKGROUND_X="grill.jpg">
+<H2 ALIGN="CENTER">
+<B><FONT COLOR="YELLOW">timelapse_dir/20160215-073952/z11430.jpg --- 22.7 &deg;C - 37.2 %H
+--- Tue Feb 16 15:24:54 2016</FONT></B>
+</H2>
+<P ALIGN="CENTER">
+<IMG SRC="timelapse_dir/20160215-073952/z11430.jpg" STYLE="HEIGHT: 100%" ALT="NO IMAGE!" WIDTH_X="420" HEIGHT_X="420">
+</P>
+</BODY>
+</HTML>
+
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAM0AAAD
+ NCAMAAAAsYgRbAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5c
+ cllPAAAABJQTFRF3NSmzMewPxIG//ncJEJsldTou1jHgAAAARBJREFUeNrs2EEK
+ gCAQBVDLuv+V20dENbMY831wKz4Y/VHb/5RGQ0NDQ0NDQ0NDQ0NDQ0NDQ
+ 0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0PzMWtyaGhoaGhoaGhoaGhoaGhoxtb0QGho
+ aGhoaGhoaGhoaGhoaMbRLEvv50VTQ9OTQ5OpyZ01GpM2g0bfmDQaL7S+ofFC6x
+ v3ZpxJiywakzbvd9r3RWPS9I2+MWk0+kbf0Hih9Y17U0nTHibrDDQ0NDQ0NDQ0
+ NDQ0NDQ0NTXbRSL/AK72o6GhoaGhoRlL8951vwsNDQ0NDQ1NDc0WyHtDTEhD
+ Q0NDQ0NTS5MdGhoaGhoaGhoaGhoaGhoaGhoaGhoaGposzSHAAErMwwQ2HwRQ
+ AAAAAElFTkSuQmCC" alt="beastie.png">
+ 
+ ---
+ 
+<HTML>
+<HEAD>
+<TITLE>PiCamServer</TITLE>
+<META HTTP-EQUIV=PRAGMA CONTENT=NO-CACHE>
+<META HTTP-EQUIV=EXPIRES CONTENT=-1>
+<META HTTP-EQUIV=REFRESH CONTENT=10>
+</HEAD>
+<BODY BGCOLOR="BLACK" BACKGROUND_X="grill.jpg">
+<H2 ALIGN="CENTER">
+<B><FONT COLOR="YELLOW">PiCamServer</FONT></B>
+</H2>
+<P ALIGN="CENTER">
+<IMG SRC="image" STYLE="HEIGHT: 100%" ALT="NO IMAGE!" WIDTH_X="420" HEIGHT_X="420">
+</P>
+</BODY>
+</HTML>
+
+- Client receives - note the carriage returns which are in fact 0d 0a:
+
+"GET / HTTP/1.1
+Host: localhost:9000
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:18.0) Gecko/20100101 Firefox/18.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+
+
+"
+
+The image is requested as:
+"GET /picamimage HTTP/1.1
+Host: localhost:9000
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:18.0) Gecko/20100101 Firefox/18.0
+Accept: image/png,image/*;q=0.8,*/*;q=0.5
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Referer: http://localhost:9000/
+Connection: keep-alive
+
+
+"
+
+- Wireshark indicates it responds with (carriage returns are 0d 0a):
+
+"HTTP/1.0 200 OK
+
+Server: SimpleHTTP/0.6 Python/2.7.3
+Date: Tue, 16 Feb 2016 15:50:59 GMT
+Content-type: text/html
+
+
+"
