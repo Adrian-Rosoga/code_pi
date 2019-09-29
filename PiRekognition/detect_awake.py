@@ -14,6 +14,10 @@ import shutil
 
 
 MINS_TO_SLEEP = 5
+ON = True
+OFF = False
+PHOTO_DIR = '/tmp/timelapse'
+PHOTO_SAVE_DIR = '/mnt/lenolin_speed/face_recognition/'
 
 
 def get_picture_filename():
@@ -60,16 +64,24 @@ def get_picture_filename():
 
 def copy_file(image_file, tag):
     try:
-        # shutil.copy(image_file, '/mnt/lenolin_speed/face_recognition')
-        # shutil.copy2(image_file, '/mnt/lenolin_speed/face_recognition')
+        # shutil.copy(image_file, PHOTO_SAVE_DIR)
+        # shutil.copy2(image_file, PHOTO_SAVE_DIR)
 
         name, extension = os.path.basename(image_file).split('.')
-        cmd = 'cp ' + image_file + ' /mnt/lenolin_speed/face_recognition/' + name + '_' + tag + '.' + extension
+        cmd = 'cp ' + image_file + ' ' + PHOTO_SAVE_DIR + name + '_' + tag + '.' + extension
         os.system(cmd)
     except IOError as e:
         print("Unable to copy file. %s" % e)
     except:
         print("Unexpected error:", sys.exc_info())
+
+
+def action(on_off):
+
+    if on_off == ON:
+        os.system('/home/pi/code_pi/PiRekognition/hs100_lamp_on.sh')
+    else:
+        os.system('/home/pi/code_pi/PiRekognition/hs100_lamp_off.sh')
 
 
 def check(image_file, client):
@@ -92,14 +104,14 @@ def check(image_file, client):
             if label['EyesOpen']['Value']:
                 if label['EyesOpen']['Confidence'] >= 90.0:
                     tag = 'eyes_open'
-                    os.system('/home/pi/work/awake_detector/hs100_lamp_on.sh')
+                    action(ON)
                 else:
                     tag = 'eyes_open_but_maybe_not'
-                    os.system('/home/pi/work/awake_detector/hs100_lamp_off.sh')
+                    action(OFF)
 
             else:
                 tag = 'eyes_closed'
-                os.system('/home/pi/work/awake_detector/hs100_lamp_off.sh')
+                action(OFF)
 
             tag = tag + '_' + '{:.1f}'.format(label['EyesOpen']['Confidence']) + '_' + \
                   '{:.1f}'.format(label['Confidence'])
@@ -108,7 +120,7 @@ def check(image_file, client):
         print(timestamp + ': ' + image_file + ": No 'FaceDetails' element")
         tag = 'no_face_details'
 
-        os.system('/home/pi/work/awake_detector/hs100_lamp_off.sh')
+        action(OFF)
 
     copy_file(image_file, tag)
 
@@ -118,11 +130,7 @@ def check(image_file, client):
 
 if __name__ == "__main__":
 
-    # print('here')
-    # os.system('/home/pi/work/awake_detector/hs100_lamp_on.sh')
-    # sys.exit(1)
-
-    os.chdir('/tmp/timelapse')
+    os.chdir(PHOTO_DIR)
 
     client = boto3.client('rekognition')
 
@@ -134,7 +142,7 @@ if __name__ == "__main__":
         # if True:
 
             last_picture = get_picture_filename()
-            last_picture = os.path.join('/tmp/timelapse', last_picture)
+            last_picture = os.path.join(PHOTO_DIR, last_picture)
 
             print('Processing photo', last_picture)
 
