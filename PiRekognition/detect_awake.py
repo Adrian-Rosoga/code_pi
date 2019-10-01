@@ -11,6 +11,7 @@ import time
 import os
 import pprint
 import shutil
+import unittest
 
 
 MINS_TO_SLEEP = 5
@@ -24,7 +25,7 @@ def get_picture_filename():
     # Filter for directory names starting with '201'
     try:
         last_dir_name = max(filter(lambda dir: dir.find('2019') != -1, os.listdir('.')))
-        if last_dir_name == None:
+        if last_dir_name is None:
             print('WARNING: last_dir_name == None')
             return None
         if len(last_dir_name) == 0:
@@ -85,68 +86,120 @@ def action(on_off):
 
 
 def check(image_file, client):
-    localtime = time.localtime()
-    timestamp = time.strftime("%I:%M:%S %p", localtime)
+
+    eyes_open = None
+    tag = ''
+    response = None
 
     with open(image_file, 'rb') as image:
         response = client.detect_faces(Image={'Bytes': image.read()}, Attributes=['ALL'])
 
-    pprint.pprint(response)
-    print('\n')
-
-    tag = ''
     if response['FaceDetails'] is not None and len(response['FaceDetails']) > 0:
 
         for label in response['FaceDetails']:
 
-            print(timestamp + ': ' + image_file + ': ' + str(label['EyesOpen']) + ' : ' + str(label['Confidence']))
-
             if label['EyesOpen']['Value']:
                 if label['EyesOpen']['Confidence'] >= 90.0:
-                    tag = 'eyes_open'
-                    action(ON)
+                    eyes_open, tag = True, 'eyes_open'
                 else:
-                    tag = 'eyes_open_but_maybe_not'
-                    action(OFF)
-
+                    eyes_open, tag = False, 'eyes_open_but_maybe_not'
             else:
-                tag = 'eyes_closed'
-                action(OFF)
+                eyes_open, tag = False, 'eyes_closed'
 
             tag = tag + '_' + '{:.1f}'.format(label['EyesOpen']['Confidence']) + '_' + \
                   '{:.1f}'.format(label['Confidence'])
 
     else:
-        print(timestamp + ': ' + image_file + ": No 'FaceDetails' element")
-        tag = 'no_face_details'
 
-        action(OFF)
+        eyes_open, tag = None, 'no_face_details'
 
-    copy_file(image_file, tag)
+    response['ImageOriginal'] = image_file
 
-    name, extension = os.path.basename(image_file).split('.')
-    response['Photo'] = name + '_' + tag + '.' + extension
+    return response, eyes_open, tag
+
+
+class MyTest(unittest.TestCase):
+
+    def test(self):
+
+        client = boto3.client('rekognition')
+
+        response, eyes_open, tag = check('test_eyes_closed_52.7_99.9.jpg', client)
+        self.assertEqual(eyes_open, False)
+        self.assertEqual(tag, 'eyes_closed_52.7_99.9')
+
+        response, eyes_open, tag = check('test_eyes_open_97.2_100.0.jpg', client)
+        self.assertEqual(eyes_open, True)
+        self.assertEqual(tag, 'eyes_open_97.2_100.0')
+
+        response, eyes_open, tag = check('test_eyes_open_but_maybe_not_64.6_100.0.jpg', client)
+        self.assertEqual(eyes_open, False)
+        self.assertEqual(tag, 'eyes_open_but_maybe_not_64.6_100.0')
+
+        response, eyes_open, tag = check('test_no_face_details.jpg', client)
+        self.assertEqual(eyes_open, None)
+        self.assertEqual(tag, 'no_face_details')
+
+        response, eyes_open, tag = check('test_jack_jack_and_elon.jpg', client)
+        self.assertEqual(eyes_open, True)
+        self.assertEqual(tag, 'eyes_open_96.9_96.6')
 
 
 if __name__ == "__main__":
 
-    os.chdir(PHOTO_DIR)
+    continuous = False
+
+    if len(sys.argv) == 2:
+
+        if sys.argv[1] == 'test':
+            del sys.argv[1:]
+            unittest.main()
+            sys.exit(0)
+        if sys.argv[1] == 'c':
+            continuous = True
+        else:
+            image_file = sys.argv[1]
+            client = boto3.client('rekognition')
+            response, eyes_open, tag = check(image_file, client)
+            pprint.pprint(response)
+            print('\n')
+            print('Eyes open:', eyes_open)
+            print('tag:', tag)
+            sys.exit(0)
 
     client = boto3.client('rekognition')
+    os.chdir(PHOTO_DIR)
 
     while True:
 
         timestamp = time.localtime()
 
-        if timestamp.tm_hour >= 5 and timestamp.tm_hour <= 6:
-        # if True:
+        if continuous or (timestamp.tm_hour >= 5 and timestamp.tm_hour <= 6):
 
             last_picture = get_picture_filename()
             last_picture = os.path.join(PHOTO_DIR, last_picture)
 
             print('Processing photo', last_picture)
 
-            check(last_picture, client)
+            response, eyes_open, tag = check(last_picture, client)
+
+            if eyes_open is True:
+                action(ON)
+            else:
+                action(OFF)
+
+            copy_file(last_picture, tag)
+
+            localtime = time.localtime()
+            timestamp = time.strftime("%I:%M:%S %p", localtime)
+
+            print(timestamp + ': ' + last_picture + ': ' + tag)
+
+            name, extension = os.path.basename(last_picture).split('.')
+            response['ImageAnnotated'] = name + '_' + tag + '.' + extension
+
+            pprint.pprint(response)
+            print('\n')
 
         else:
 
