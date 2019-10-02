@@ -10,8 +10,9 @@ import sys
 import time
 import os
 import pprint
-import shutil
 import unittest
+import io
+from PIL import Image, ImageDraw, ExifTags, ImageColor
 
 
 MINS_TO_SLEEP = 5
@@ -19,6 +20,54 @@ ON = True
 OFF = False
 PHOTO_DIR = '/tmp/timelapse'
 PHOTO_SAVE_DIR = '/mnt/lenolin_speed/face_recognition/'
+
+'''
+None of the 3 viewers listed /usr/lib/python2.7/dist-packages/PIL/c
+was available on the distribution.
+A few options are available:
+# Hack the above ImageShow.py and add an existing viewer - e.g. gpicview
+# Install display, xv, eog. ImageMagick might make xv available - TBC.
+'''
+def show_faces(response, stream):
+
+    image = Image.open(stream)
+
+    imgWidth, imgHeight = image.size
+    draw = ImageDraw.Draw(image)
+
+    # calculate and display bounding boxes for each detected face
+    print('Detected faces')
+    for faceDetail in response['FaceDetails']:
+        print('The detected face is between ' + str(faceDetail['AgeRange']['Low'])
+              + ' and ' + str(faceDetail['AgeRange']['High']) + ' years old')
+
+        box = faceDetail['BoundingBox']
+        left = imgWidth * box['Left']
+        top = imgHeight * box['Top']
+        width = imgWidth * box['Width']
+        height = imgHeight * box['Height']
+
+        print('Left: ' + '{0:.0f}'.format(left))
+        print('Top: ' + '{0:.0f}'.format(top))
+        print('Face Width: ' + "{0:.0f}".format(width))
+        print('Face Height: ' + "{0:.0f}".format(height))
+
+        points = (
+            (left, top),
+            (left + width, top),
+            (left + width, top + height),
+            (left, top + height),
+            (left, top)
+
+        )
+        draw.line(points, fill='#00d400', width=2)
+
+        # Alternatively can draw rectangle. However you can't set line width.
+        # draw.rectangle([left,top, left + width, top + height], outline='#00d400')
+
+    image.show()
+
+    return len(response['FaceDetails'])
 
 
 def get_picture_filename():
@@ -65,9 +114,6 @@ def get_picture_filename():
 
 def copy_file(image_file, tag):
     try:
-        # shutil.copy(image_file, PHOTO_SAVE_DIR)
-        # shutil.copy2(image_file, PHOTO_SAVE_DIR)
-
         name, extension = os.path.basename(image_file).split('.')
         cmd = 'cp ' + image_file + ' ' + PHOTO_SAVE_DIR + name + '_' + tag + '.' + extension
         os.system(cmd)
@@ -85,7 +131,7 @@ def action(on_off):
         os.system('/home/pi/code_pi/PiRekognition/hs100_lamp_off.sh')
 
 
-def check(image_file, client):
+def check(image_file, client, show=False):
 
     eyes_open = None
     tag = ''
@@ -93,6 +139,8 @@ def check(image_file, client):
 
     with open(image_file, 'rb') as image:
         response = client.detect_faces(Image={'Bytes': image.read()}, Attributes=['ALL'])
+        if show:
+            show_faces(response, image)
 
     if response['FaceDetails'] is not None and len(response['FaceDetails']) > 0:
 
@@ -118,36 +166,49 @@ def check(image_file, client):
     return response, eyes_open, tag
 
 
-class MyTest(unittest.TestCase):
+class AwakeTest(unittest.TestCase):
 
     def test(self):
-
         client = boto3.client('rekognition')
 
         response, eyes_open, tag = check('test_eyes_closed_52.7_99.9.jpg', client)
-        self.assertEqual(eyes_open, False)
+        self.assertFalse(eyes_open)
         self.assertEqual(tag, 'eyes_closed_52.7_99.9')
 
         response, eyes_open, tag = check('test_eyes_open_97.2_100.0.jpg', client)
-        self.assertEqual(eyes_open, True)
+        self.assertTrue(eyes_open)
         self.assertEqual(tag, 'eyes_open_97.2_100.0')
 
         response, eyes_open, tag = check('test_eyes_open_but_maybe_not_64.6_100.0.jpg', client)
-        self.assertEqual(eyes_open, False)
+        self.assertFalse(eyes_open)
         self.assertEqual(tag, 'eyes_open_but_maybe_not_64.6_100.0')
 
         response, eyes_open, tag = check('test_no_face_details.jpg', client)
-        self.assertEqual(eyes_open, None)
+        self.assertIsNone(eyes_open)
         self.assertEqual(tag, 'no_face_details')
 
         response, eyes_open, tag = check('test_jack_jack_and_elon.jpg', client)
-        self.assertEqual(eyes_open, True)
+        self.assertTrue(eyes_open, True)
         self.assertEqual(tag, 'eyes_open_96.9_96.6')
+
+
+class AwakeTest_quick(unittest.TestCase):
+
+    def test(self):
+        client = boto3.client('rekognition')
+
+        response, eyes_open, tag = check('test_no_face_details.jpg', client)
+        self.assertIsNone(eyes_open)
+        self.assertEqual(tag, 'no_face_details')
 
 
 if __name__ == "__main__":
 
     continuous = False
+
+    if len(sys.argv) >= 2 and sys.argv[1] == 'test':
+            del sys.argv[1]
+            sys.exit(unittest.main())
 
     if len(sys.argv) == 2:
 
@@ -160,7 +221,7 @@ if __name__ == "__main__":
         else:
             image_file = sys.argv[1]
             client = boto3.client('rekognition')
-            response, eyes_open, tag = check(image_file, client)
+            response, eyes_open, tag = check(image_file, client, show=True)
             pprint.pprint(response)
             print('\n')
             print('Eyes open:', eyes_open)
@@ -198,8 +259,8 @@ if __name__ == "__main__":
             name, extension = os.path.basename(last_picture).split('.')
             response['ImageAnnotated'] = name + '_' + tag + '.' + extension
 
-            pprint.pprint(response)
-            print('\n')
+            #pprint.pprint(response)
+            #print('\n')
 
         else:
 
