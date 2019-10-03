@@ -12,14 +12,14 @@ import os
 import pprint
 import unittest
 import io
-from PIL import Image, ImageDraw, ExifTags, ImageColor
+from PIL import Image, ImageDraw, ExifTags, ImageColor, ImageFont
 
 
 MINS_TO_SLEEP = 5
 ON = True
 OFF = False
 PHOTO_DIR = '/tmp/timelapse'
-PHOTO_SAVE_DIR = '/mnt/lenolin_speed/face_recognition/'
+IMAGE_DESTINATION_DIR = '/mnt/lenolin_speed/face_recognition/'
 
 '''
 None of the 3 viewers listed /usr/lib/python2.7/dist-packages/PIL/c
@@ -28,12 +28,16 @@ A few options are available:
 # Hack the above ImageShow.py and add an existing viewer - e.g. gpicview
 # Install display, xv, eog. ImageMagick might make xv available - TBC.
 '''
-def show_faces(response, stream):
+def show_faces(response, stream, image_file, tag):
 
     image = Image.open(stream)
 
     imgWidth, imgHeight = image.size
     draw = ImageDraw.Draw(image)
+
+    #  Find out available fonts with fc-list
+    #font = ImageFont.truetype("sans-serif.ttf", 64)
+    font = ImageFont.truetype("FreeMono.ttf", 64)
 
     # calculate and display bounding boxes for each detected face
     print('Detected faces')
@@ -62,15 +66,17 @@ def show_faces(response, stream):
         )
         draw.line(points, fill='#00d400', width=2)
 
-        # Alternatively can draw rectangle. However you can't set line width.
-        # draw.rectangle([left,top, left + width, top + height], outline='#00d400')
+        draw.text((0, 0), 'TBC', fill='white', font=font)
 
-    image.show()
+    #image.show()
 
-    return len(response['FaceDetails'])
+    name, extension = os.path.basename(image_file).split('.')
+    annotated_file = name + '_' + tag + '.' + extension
+
+    image.save(os.path.join(IMAGE_DESTINATION_DIR, annotated_file))
 
 
-def get_picture_filename():
+def get_image_filename():
     # Filter for directory names starting with '201'
     try:
         last_dir_name = max(filter(lambda dir: dir.find('2019') != -1, os.listdir('.')))
@@ -98,24 +104,24 @@ def get_picture_filename():
         print('WARNING: len(files) == 0')
         return None
 
-    # Last picture is the one we are looking for
-    last_picture = files[-1]
+    # Last image is the one we are looking for
+    last_image = files[-1]
 
     # If it ends in '~' it's a temporary image file, try the previous one if it exists
-    if last_picture.find('~') == -1:
-        return os.path.join(last_dir_path, last_picture)
+    if last_image.find('~') == -1:
+        return os.path.join(last_dir_path, last_image)
     else:
         if len(files) < 2:
             print('WARNING: len(files) < 2')
             return None
-        last_picture = files[-2]
-        return os.path.join(last_dir_path, last_picture)
+        last_image = files[-2]
+        return os.path.join(last_dir_path, last_image)
 
 
 def copy_file(image_file, tag):
     try:
         name, extension = os.path.basename(image_file).split('.')
-        cmd = 'cp ' + image_file + ' ' + PHOTO_SAVE_DIR + name + '_' + tag + '.' + extension
+        cmd = 'cp ' + image_file + ' ' + IMAGE_DESTINATION_DIR + name + '_' + tag + '.' + extension
         os.system(cmd)
     except IOError as e:
         print("Unable to copy file. %s" % e)
@@ -139,29 +145,31 @@ def check(image_file, client, show=False):
 
     with open(image_file, 'rb') as image:
         response = client.detect_faces(Image={'Bytes': image.read()}, Attributes=['ALL'])
-        if show:
-            show_faces(response, image)
 
-    if response['FaceDetails'] is not None and len(response['FaceDetails']) > 0:
 
-        for label in response['FaceDetails']:
+        if response['FaceDetails'] is not None and len(response['FaceDetails']) > 0:
 
-            if label['EyesOpen']['Value']:
-                if label['EyesOpen']['Confidence'] >= 90.0:
-                    eyes_open, tag = True, 'eyes_open'
+            for label in response['FaceDetails']:
+
+                if label['EyesOpen']['Value']:
+                    if label['EyesOpen']['Confidence'] >= 90.0:
+                        eyes_open, tag = True, 'eyes_open'
+                    else:
+                        eyes_open, tag = False, 'eyes_open_but_maybe_not'
                 else:
-                    eyes_open, tag = False, 'eyes_open_but_maybe_not'
-            else:
-                eyes_open, tag = False, 'eyes_closed'
+                    eyes_open, tag = False, 'eyes_closed'
 
-            tag = tag + '_' + '{:.1f}'.format(label['EyesOpen']['Confidence']) + '_' + \
-                  '{:.1f}'.format(label['Confidence'])
+                tag = tag + '_' + '{:.1f}'.format(label['EyesOpen']['Confidence']) + '_' + \
+                      '{:.1f}'.format(label['Confidence'])
 
-    else:
+        else:
 
-        eyes_open, tag = None, 'no_face_details'
+            eyes_open, tag = None, 'no_face_details'
 
-    response['ImageOriginal'] = image_file
+        response['ImageOriginal'] = image_file
+
+        if show:
+            show_faces(response, image, image_file, tag)
 
     return response, eyes_open, tag
 
@@ -237,26 +245,26 @@ if __name__ == "__main__":
 
         if continuous or (timestamp.tm_hour >= 5 and timestamp.tm_hour <= 6):
 
-            last_picture = get_picture_filename()
-            last_picture = os.path.join(PHOTO_DIR, last_picture)
+            last_image = get_image_filename()
+            last_image = os.path.join(PHOTO_DIR, last_image)
 
-            print('Processing photo', last_picture)
+            print('Processing photo', last_image)
 
-            response, eyes_open, tag = check(last_picture, client)
+            response, eyes_open, tag = check(last_image, client)
 
             if eyes_open is True:
                 action(ON)
             else:
                 action(OFF)
 
-            copy_file(last_picture, tag)
+            copy_file(last_image, tag)
 
             localtime = time.localtime()
             timestamp = time.strftime("%I:%M:%S %p", localtime)
 
-            print(timestamp + ': ' + last_picture + ': ' + tag)
+            print(timestamp + ': ' + last_image + ': ' + tag)
 
-            name, extension = os.path.basename(last_picture).split('.')
+            name, extension = os.path.basename(last_image).split('.')
             response['ImageAnnotated'] = name + '_' + tag + '.' + extension
 
             #pprint.pprint(response)
