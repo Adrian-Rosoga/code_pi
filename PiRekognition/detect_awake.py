@@ -21,6 +21,7 @@ OFF = False
 PHOTO_DIR = '/tmp/timelapse'
 IMAGE_DESTINATION_DIR = '/mnt/lenolin_speed/face_recognition/'
 
+
 '''
 None of the 3 viewers listed /usr/lib/python2.7/dist-packages/PIL/c
 was available on the distribution.
@@ -36,12 +37,14 @@ def show_faces(response, stream, image_file, tag):
     draw = ImageDraw.Draw(image)
 
     #  Find out available fonts with fc-list
-    #font = ImageFont.truetype("sans-serif.ttf", 64)
-    font = ImageFont.truetype("FreeMono.ttf", 64)
+    font = ImageFont.truetype("FreeSansBold.ttf", 32)
+    #font = ImageFont.truetype('arial', 32)
 
-    # calculate and display bounding boxes for each detected face
-    print('Detected faces')
+    annotation = ''
+    index = 0
+    # Display bounding boxes for each detected face
     for faceDetail in response['FaceDetails']:
+
         print('The detected face is between ' + str(faceDetail['AgeRange']['Low'])
               + ' and ' + str(faceDetail['AgeRange']['High']) + ' years old')
 
@@ -62,13 +65,29 @@ def show_faces(response, stream, image_file, tag):
             (left + width, top + height),
             (left, top + height),
             (left, top)
-
         )
-        draw.line(points, fill='#00d400', width=2)
+        draw.line(points, fill='yellow', width=2)
 
-        draw.text((0, 0), 'TBC', fill='white', font=font)
+        annotation = 'Face #' + str(index) + ': EyesOpen=' + str(faceDetail['EyesOpen']['Value']) + \
+               ' - EyesOpenConfidence=' + '{:.1f}'.format(faceDetail['EyesOpen']['Confidence']) + '% - ' +\
+               'Confidence=' + '{:.1f}'.format(faceDetail['Confidence']) + '%'
 
-    #image.show()
+        text_width, text_height = font.getsize(annotation)
+        draw.rectangle((0, 40 * index, text_width, 40 * (index + 1)), fill='black')
+        draw.text((0, 40 * index), annotation, fill='yellow', font=font)
+
+        draw.text((left, top), str(index), fill='yellow', font=font)
+
+        index = index + 1
+
+    if index == 0:
+        text_width, text_height = font.getsize(annotation)
+        draw.rectangle((0, 0, text_width, 40), fill='black')
+        annotation = 'No face details'
+        draw.text((0, 0), annotation, fill='yellow', font=font)
+
+    # Usable for debugging only
+    # image.show()
 
     name, extension = os.path.basename(image_file).split('.')
     annotated_file = name + '_' + tag + '.' + extension
@@ -146,8 +165,7 @@ def check(image_file, client, show=False):
     with open(image_file, 'rb') as image:
         response = client.detect_faces(Image={'Bytes': image.read()}, Attributes=['ALL'])
 
-
-        if response['FaceDetails'] is not None and len(response['FaceDetails']) > 0:
+        if response['FaceDetails'] is not None and len(response['FaceDetails']) == 1:
 
             for label in response['FaceDetails']:
 
@@ -155,12 +173,16 @@ def check(image_file, client, show=False):
                     if label['EyesOpen']['Confidence'] >= 90.0:
                         eyes_open, tag = True, 'eyes_open'
                     else:
-                        eyes_open, tag = False, 'eyes_open_but_maybe_not'
+                        eyes_open, tag = False, 'eyes_probably_closed'
                 else:
                     eyes_open, tag = False, 'eyes_closed'
 
                 tag = tag + '_' + '{:.1f}'.format(label['EyesOpen']['Confidence']) + '_' + \
                       '{:.1f}'.format(label['Confidence'])
+
+        elif response['FaceDetails'] is not None and len(response['FaceDetails']) > 0:
+
+            eyes_open, tag = False, 'more_than_one_faces'
 
         else:
 
@@ -187,9 +209,9 @@ class AwakeTest(unittest.TestCase):
         self.assertTrue(eyes_open)
         self.assertEqual(tag, 'eyes_open_97.2_100.0')
 
-        response, eyes_open, tag = check('test_eyes_open_but_maybe_not_64.6_100.0.jpg', client)
+        response, eyes_open, tag = check('test_eyes_probably_closed_64.6_100.0.jpg', client)
         self.assertFalse(eyes_open)
-        self.assertEqual(tag, 'eyes_open_but_maybe_not_64.6_100.0')
+        self.assertEqual(tag, 'eyes_probably_closed_64.6_100.0')
 
         response, eyes_open, tag = check('test_no_face_details.jpg', client)
         self.assertIsNone(eyes_open)
@@ -250,14 +272,14 @@ if __name__ == "__main__":
 
             print('Processing photo', last_image)
 
-            response, eyes_open, tag = check(last_image, client)
+            response, eyes_open, tag = check(last_image, client, show=True)
 
             if eyes_open is True:
                 action(ON)
             else:
                 action(OFF)
 
-            copy_file(last_image, tag)
+            #copy_file(last_image, tag)
 
             localtime = time.localtime()
             timestamp = time.strftime("%I:%M:%S %p", localtime)
