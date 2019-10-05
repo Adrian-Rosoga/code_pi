@@ -13,6 +13,7 @@ import pprint
 import unittest
 import io
 from PIL import Image, ImageDraw, ExifTags, ImageColor, ImageFont
+from PIL.ExifTags import TAGS
 
 
 MINS_TO_SLEEP = 5
@@ -20,6 +21,15 @@ ON = True
 OFF = False
 PHOTO_DIR = '/tmp/timelapse'
 IMAGE_DESTINATION_DIR = '/mnt/lenolin_speed/face_recognition/'
+
+
+def get_exif(pil_image):
+    exif_info = {}
+    info = pil_image._getexif()
+    for tag, value in info.items():
+        decoded = TAGS.get(tag, tag)
+        exif_info[decoded] = value
+    return exif_info
 
 
 '''
@@ -40,8 +50,17 @@ def show_faces(response, stream, image_file, tag):
     font = ImageFont.truetype("FreeSansBold.ttf", 32)
     #font = ImageFont.truetype('arial', 32)
 
+    exif_info = get_exif(image)
+    # '2019:10:03 11:24:52'
+    date_taken = str(exif_info['DateTime'])
+
     annotation = ''
-    index = 0
+    index = 1
+
+    text_width, text_height = font.getsize(date_taken)
+    draw.rectangle((0, 0, text_width, 40), fill='black')
+    draw.text((0, 0), date_taken, fill='yellow', font=font)
+
     # Display bounding boxes for each detected face
     for faceDetail in response['FaceDetails']:
 
@@ -80,17 +99,24 @@ def show_faces(response, stream, image_file, tag):
 
         index = index + 1
 
-    if index == 0:
+    if index == 1:
         text_width, text_height = font.getsize(annotation)
-        draw.rectangle((0, 0, text_width, 40), fill='black')
+        draw.rectangle((0, 40 * index, text_width,  40 * (index + 1)), fill='black')
         annotation = 'No face details'
-        draw.text((0, 0), annotation, fill='yellow', font=font)
+        draw.text((0, 40 * index), annotation, fill='yellow', font=font)
 
     # Usable for debugging only
     # image.show()
 
     name, extension = os.path.basename(image_file).split('.')
-    annotated_file = name + '_' + tag + '.' + extension
+
+    #annotated_file = name + '_' + tag + '.' + extension
+
+    # From '2019:10:03 11:24:52' to Dropbox-like format '2019-10-03 11.24.52'
+    date_taken = date_taken.replace(':', '-', 2)
+    date_taken = date_taken.replace(':', '.')
+
+    annotated_file = date_taken + ' ' + tag + '.' + extension
 
     image.save(os.path.join(IMAGE_DESTINATION_DIR, annotated_file))
 
