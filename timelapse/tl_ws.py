@@ -6,12 +6,6 @@ Adrian Rosoga
 Version 1.0, 14 Jan 2014, refactored 29 Sep 2018
 """
 
-"""
-TODO
-- Report how long ago the file was taken
-- Report reasons for missing picture: no dir, empty dir, etc
-"""
-
 import re
 import time
 import sys
@@ -20,6 +14,92 @@ import traceback
 import subprocess
 from BaseHTTPServer import HTTPServer
 from SimpleHTTPServer import SimpleHTTPRequestHandler
+
+
+"""
+TODO
+- Report how long ago the file was taken
+- Report reasons for missing picture: no dir, empty dir, etc
+
+FIXME
+192.168.1.106 - - [06/Oct/2019 14:25:23] "GET /2019/tl_1006142513.jpg HTTP/1.1" 200 -
+Caught exception!
+<class 'socket.error'>
+Traceback (most recent call last):
+  File "/home/pi/code_pi/timelapse/tl_ws.py", line 159, in do_GET
+    return SimpleHTTPRequestHandler.do_GET(self)
+  File "/usr/lib/python2.7/SimpleHTTPServer.py", line 48, in do_GET
+    self.copyfile(f, self.wfile)
+  File "/usr/lib/python2.7/SimpleHTTPServer.py", line 192, in copyfile
+    shutil.copyfileobj(source, outputfile)
+  File "/usr/lib/python2.7/shutil.py", line 66, in copyfileobj
+    fdst.write(buf)
+  File "/usr/lib/python2.7/socket.py", line 328, in write
+    self.flush()
+  File "/usr/lib/python2.7/socket.py", line 307, in flush
+    self._sock.sendall(view[write_offset:write_offset+buffer_size])
+error: [Errno 113] No route to host
+----------------------------------------
+Exception happened during processing of request from ('192.168.1.106', 38184)
+Traceback (most recent call last):
+  File "/usr/lib/python2.7/SocketServer.py", line 293, in _handle_request_noblock
+    self.process_request(request, client_address)
+  File "/usr/lib/python2.7/SocketServer.py", line 321, in process_request
+    self.finish_request(request, client_address)
+  File "/usr/lib/python2.7/SocketServer.py", line 334, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/usr/lib/python2.7/SocketServer.py", line 657, in __init__
+    self.finish()
+  File "/usr/lib/python2.7/SocketServer.py", line 716, in finish
+    self.wfile.close()
+  File "/usr/lib/python2.7/socket.py", line 283, in close
+    self.flush()
+  File "/usr/lib/python2.7/socket.py", line 307, in flush
+    self._sock.sendall(view[write_offset:write_offset+buffer_size])
+error: [Errno 32] Broken pipe
+----------------------------------------
+
+After CTRL-C it logged below and resumed working:
+
+^C----------------------------------------
+Exception happened during processing of request from ('192.168.1.106', 38188)
+Traceback (most recent call last):
+  File "/usr/lib/python2.7/SocketServer.py", line 293, in _handle_request_noblock
+    self.process_request(request, client_address)
+  File "/usr/lib/python2.7/SocketServer.py", line 321, in process_request
+    self.finish_request(request, client_address)
+  File "/usr/lib/python2.7/SocketServer.py", line 334, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/usr/lib/python2.7/SocketServer.py", line 655, in __init__
+    self.handle()
+  File "/usr/lib/python2.7/BaseHTTPServer.py", line 340, in handle
+    self.handle_one_request()
+  File "/usr/lib/python2.7/BaseHTTPServer.py", line 310, in handle_one_request
+    self.raw_requestline = self.rfile.readline(65537)
+  File "/usr/lib/python2.7/socket.py", line 480, in readline
+    data = self._sock.recv(self._rbufsize)
+KeyboardInterrupt
+----------------------------------------
+192.168.1.106 - - [06/Oct/2019 16:16:10] "GET /tl HTTP/1.1" 200 -
+192.168.1.106 - - [06/Oct/2019 16:16:11] "GET /tl HTTP/1.1" 200 -
+192.168.1.106 - - [06/Oct/2019 16:16:12] "GET /tl HTTP/1.1" 200 -
+192.168.1.106 - - [06/Oct/2019 16:16:13] "GET /tl HTTP/1.1" 200 -
+192.168.1.106 - - [06/Oct/2019 16:16:13] "GET /tl HTTP/1.1" 200 -
+192.168.1.101 - - [06/Oct/2019 16:17:39] "GET /tl HTTP/1.1" 200 -
+192.168.1.101 - - [06/Oct/2019 16:17:39] "GET /2019/tl_1006161733.jpg HTTP/1.1" 200 -
+192.168.1.101 - - [06/Oct/2019 16:17:45] "GET /tl HTTP/1.1" 200 -
+192.168.1.101 - - [06/Oct/2019 16:17:46] "GET /2019/tl_1006161743.jpg HTTP/1.1" 200 -
+
+
+Another CTRL-C got it killed as expected:
+
+192.168.1.101 - - [06/Oct/2019 16:19:15] "GET /2019/tl_1006161913.jpg HTTP/1.1" 200 -
+192.168.1.101 - - [06/Oct/2019 16:19:25] "GET /tl HTTP/1.1" 200 -
+192.168.1.101 - - [06/Oct/2019 16:19:26] "GET /2019/tl_1006161923.jpg HTTP/1.1" 200 -
+^C^C received, shutting down server
+
+"""
+
 
 #
 # Configuration
@@ -55,15 +135,16 @@ def get_temperature_DS18B20():
 def get_temperature():
 
     # Uncomment if no temperature sensor attached
-    return 'N/A'
-    #return run_cmd('sudo /home/pi/code_pi/HTU21/HTU21D.py')
+    #return 'N/A'
+    return run_cmd('sudo /home/pi/code_pi/HTU21/HTU21D.py')
+
 
 body_template = """<HTML>
 <HEAD>
 <TITLE>Team GBLM</TITLE>
 <META HTTP-EQUIV=PRAGMA CONTENT=NO-CACHE>
 <META HTTP-EQUIV=EXPIRES CONTENT=-1>
-<META HTTP-EQUIV=REFRESH.DISABLED CONTENT=300>
+<META HTTP-EQUIV=REFRESH CONTENT=10>
 </HEAD>
 <BODY BGCOLOR="BLACK" BACKGROUND_X="grill.jpg">
 <H2 ALIGN="CENTER">
@@ -131,9 +212,9 @@ def make_body():
         last_modified_date = time.ctime(os.path.getmtime(image))
         body = body.replace('XXX_IMAGE_XXX', image);
 
-        #body = body.replace('XXX_INFO_XXX', image + ' --- ' + str(get_temperature()) +
-        #                    '--- ' + last_modified_date)
-        body = body.replace('XXX_INFO_XXX', 'St. George Wharf *** ' + last_modified_date)
+        body = body.replace('XXX_INFO_XXX', image + ' --- ' + str(get_temperature()) +
+                            '--- ' + last_modified_date)
+        #body = body.replace('XXX_INFO_XXX', 'St. George Wharf *** ' + last_modified_date)
 
     return body
 
@@ -176,12 +257,12 @@ try:
     timelapse_dir = subprocess.check_output(['readlink', 'timelapse_dir']).rstrip()
     print('Serving from ' + timelapse_dir)
 
-    #os.chdir('/home/pi/timelapse_webserver_dir')
     os.chdir(timelapse_dir)
 
     server = HTTPServer(('', PORT), MyHandler)
     print('Started HTTP server on port ' + str(PORT))
     server.serve_forever()
+
 except KeyboardInterrupt:
     print("^C received, shutting down server")
     server.socket.close()
