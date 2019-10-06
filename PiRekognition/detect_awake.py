@@ -15,7 +15,6 @@ import io
 from PIL import Image, ImageDraw, ExifTags, ImageColor, ImageFont
 from PIL.ExifTags import TAGS
 
-
 MINS_TO_SLEEP = 5
 ON = True
 OFF = False
@@ -32,23 +31,16 @@ def get_exif(pil_image):
     return exif_info
 
 
-'''
-None of the 3 viewers listed /usr/lib/python2.7/dist-packages/PIL/c
-was available on the distribution.
-A few options are available:
-# Hack the above ImageShow.py and add an existing viewer - e.g. gpicview
-# Install display, xv, eog. ImageMagick might make xv available - TBC.
-'''
 def show_faces(response, stream, image_file, tag):
 
     image = Image.open(stream)
 
-    imgWidth, imgHeight = image.size
+    image_width, image_height = image.size
     draw = ImageDraw.Draw(image)
 
     #  Find out available fonts with fc-list
     font = ImageFont.truetype("FreeSansBold.ttf", 32)
-    #font = ImageFont.truetype('arial', 32)
+    # font = ImageFont.truetype('arial', 32)
 
     exif_info = get_exif(image)
     # '2019:10:03 11:24:52'
@@ -63,20 +55,19 @@ def show_faces(response, stream, image_file, tag):
 
     # Display bounding boxes for each detected face
     for faceDetail in response['FaceDetails']:
-
-        print('The detected face is between ' + str(faceDetail['AgeRange']['Low'])
-              + ' and ' + str(faceDetail['AgeRange']['High']) + ' years old')
+        # print('The detected face is between ' + str(faceDetail['AgeRange']['Low'])
+        #      + ' and ' + str(faceDetail['AgeRange']['High']) + ' years old')
 
         box = faceDetail['BoundingBox']
-        left = imgWidth * box['Left']
-        top = imgHeight * box['Top']
-        width = imgWidth * box['Width']
-        height = imgHeight * box['Height']
+        left = image_width * box['Left']
+        top = image_height * box['Top']
+        width = image_width * box['Width']
+        height = image_height * box['Height']
 
-        print('Left: ' + '{0:.0f}'.format(left))
-        print('Top: ' + '{0:.0f}'.format(top))
-        print('Face Width: ' + "{0:.0f}".format(width))
-        print('Face Height: ' + "{0:.0f}".format(height))
+        # print('Left: ' + '{0:.0f}'.format(left))
+        # print('Top: ' + '{0:.0f}'.format(top))
+        # print('Face Width: ' + "{0:.0f}".format(width))
+        # print('Face Height: ' + "{0:.0f}".format(height))
 
         points = (
             (left, top),
@@ -88,8 +79,8 @@ def show_faces(response, stream, image_file, tag):
         draw.line(points, fill='yellow', width=2)
 
         annotation = 'Face #' + str(index) + ': EyesOpen=' + str(faceDetail['EyesOpen']['Value']) + \
-               ' - EyesOpenConfidence=' + '{:.1f}'.format(faceDetail['EyesOpen']['Confidence']) + '% - ' +\
-               'Confidence=' + '{:.1f}'.format(faceDetail['Confidence']) + '%'
+                     ' - EyesOpenConfidence=' + '{:.1f}'.format(faceDetail['EyesOpen']['Confidence']) + '% - ' + \
+                     'Confidence=' + '{:.1f}'.format(faceDetail['Confidence']) + '%'
 
         text_width, text_height = font.getsize(annotation)
         draw.rectangle((0, 40 * index, text_width, 40 * (index + 1)), fill='black')
@@ -101,16 +92,21 @@ def show_faces(response, stream, image_file, tag):
 
     if index == 1:
         text_width, text_height = font.getsize(annotation)
-        draw.rectangle((0, 40 * index, text_width,  40 * (index + 1)), fill='black')
+        draw.rectangle((0, 40 * index, text_width, 40 * (index + 1)), fill='black')
         annotation = 'No face details'
         draw.text((0, 40 * index), annotation, fill='yellow', font=font)
 
-    # Usable for debugging only
+    '''
+    Debugging only
+    None of the 3 viewers listed /usr/lib/python2.7/dist-packages/PIL/c
+    was available on the distribution.
+    A few options are available:
+    # Hack the above ImageShow.py and add an existing viewer - e.g. gpicview
+    # Install display, xv, eog. ImageMagick might make xv available - TBC.
+    '''
     # image.show()
 
     name, extension = os.path.basename(image_file).split('.')
-
-    #annotated_file = name + '_' + tag + '.' + extension
 
     # From '2019:10:03 11:24:52' to Dropbox-like format '2019-10-03 11.24.52'
     date_taken = date_taken.replace(':', '-', 2)
@@ -175,7 +171,6 @@ def copy_file(image_file, tag):
 
 
 def action(on_off):
-
     if on_off == ON:
         os.system('/home/pi/code_pi/PiRekognition/hs100_lamp_on.sh')
     else:
@@ -183,10 +178,8 @@ def action(on_off):
 
 
 def check(image_file, client, show=False):
-
     eyes_open = None
     tag = ''
-    response = None
 
     with open(image_file, 'rb') as image:
         response = client.detect_faces(Image={'Bytes': image.read()}, Attributes=['ALL'])
@@ -203,12 +196,12 @@ def check(image_file, client, show=False):
                 else:
                     eyes_open, tag = False, 'eyes_closed'
 
-                tag = tag + '_' + '{:.1f}'.format(label['EyesOpen']['Confidence']) + '_' + \
+                tag = tag + '_' + '{:.1f}'.format(label['EyesOpen']['Confidence']) + '_' +\
                       '{:.1f}'.format(label['Confidence'])
 
         elif response['FaceDetails'] is not None and len(response['FaceDetails']) > 0:
 
-            eyes_open, tag = False, 'more_than_one_faces'
+            eyes_open, tag = False, 'more_than_one_face'
 
         else:
 
@@ -248,7 +241,7 @@ class AwakeTest(unittest.TestCase):
         self.assertEqual(tag, 'eyes_open_96.9_96.6')
 
 
-class AwakeTest_quick(unittest.TestCase):
+class AwakeTestQuick(unittest.TestCase):
 
     def test(self):
         client = boto3.client('rekognition')
@@ -263,8 +256,8 @@ if __name__ == "__main__":
     continuous = False
 
     if len(sys.argv) >= 2 and sys.argv[1] == 'test':
-            del sys.argv[1]
-            sys.exit(unittest.main())
+        del sys.argv[1]
+        sys.exit(unittest.main())
 
     if len(sys.argv) == 2:
 
@@ -291,12 +284,12 @@ if __name__ == "__main__":
 
         timestamp = time.localtime()
 
-        if continuous or (timestamp.tm_hour >= 5 and timestamp.tm_hour <= 6):
+        if continuous or (5 <= timestamp.tm_hour <= 6):
 
             last_image = get_image_filename()
             last_image = os.path.join(PHOTO_DIR, last_image)
 
-            print('Processing photo', last_image)
+            # print('Processing image', last_image)
 
             response, eyes_open, tag = check(last_image, client, show=True)
 
@@ -305,18 +298,19 @@ if __name__ == "__main__":
             else:
                 action(OFF)
 
-            #copy_file(last_image, tag)
+            # copy_file(last_image, tag)
 
             localtime = time.localtime()
             timestamp = time.strftime("%I:%M:%S %p", localtime)
 
-            print(timestamp + ': ' + last_image + ': ' + tag)
+            signal = " |||||||||||||" if eyes_open else " -------------"
+            print(timestamp + ': ' + os.path.basename(last_image) + ': ' + tag + signal)
 
             name, extension = os.path.basename(last_image).split('.')
             response['ImageAnnotated'] = name + '_' + tag + '.' + extension
 
-            #pprint.pprint(response)
-            #print('\n')
+            # pprint.pprint(response)
+            # print('\n')
 
         else:
 

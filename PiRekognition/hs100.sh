@@ -58,7 +58,8 @@ sendtoplug() {
   ip="$1"
   port="$2"
   payload="$3"
-  echo -n "$payload" | base64 -d | nc -v $ip $port  || echo couldn''t connect to $ip:$port, nc failed with exit code $?
+  # Use '-v' to make nc verbose
+  echo -n "$payload" | base64 -d | nc $ip $port  || echo couldn''t connect to $ip:$port, nc failed with exit code $?
 }
 
 check(){
