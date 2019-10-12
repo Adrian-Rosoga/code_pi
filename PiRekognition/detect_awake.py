@@ -16,10 +16,11 @@ from PIL import Image, ImageDraw, ExifTags, ImageColor, ImageFont
 from PIL.ExifTags import TAGS
 
 MINS_TO_SLEEP = 5
+CONFIDENCE_THRESHOLD = 90.0
 ON = True
 OFF = False
 PHOTO_DIR = '/tmp/timelapse'
-IMAGE_DESTINATION_DIR = '/mnt/lenolin_speed/face_recognition/'
+IMAGE_DESTINATION_DIR = '/media/pi/PI_STICK/awake_detector/'
 
 
 def get_exif(pil_image):
@@ -29,6 +30,10 @@ def get_exif(pil_image):
         decoded = TAGS.get(tag, tag)
         exif_info[decoded] = value
     return exif_info
+
+
+def to_yes_no(value):
+    return 'YES' if value else 'NO'
 
 
 def show_faces(response, stream, image_file, tag):
@@ -64,11 +69,6 @@ def show_faces(response, stream, image_file, tag):
         width = image_width * box['Width']
         height = image_height * box['Height']
 
-        # print('Left: ' + '{0:.0f}'.format(left))
-        # print('Top: ' + '{0:.0f}'.format(top))
-        # print('Face Width: ' + "{0:.0f}".format(width))
-        # print('Face Height: ' + "{0:.0f}".format(height))
-
         points = (
             (left, top),
             (left + width, top),
@@ -78,8 +78,9 @@ def show_faces(response, stream, image_file, tag):
         )
         draw.line(points, fill='yellow', width=2)
 
-        annotation = 'Face #' + str(index) + ': EyesOpen=' + str(faceDetail['EyesOpen']['Value']) + \
-                     ' - EyesOpenConfidence=' + '{:.1f}'.format(faceDetail['EyesOpen']['Confidence']) + '% - ' + \
+        annotation = 'Face #' + str(index) + ': EyesOpen=' + to_yes_no(faceDetail['EyesOpen']['Value']) + \
+                     ' - EyesOpenConfidence=' + '{:.1f}'.format(faceDetail['EyesOpen']['Confidence']) + '% ' + \
+                     '(Threshold=' + '{:.1f}'.format(CONFIDENCE_THRESHOLD) + ') - ' +\
                      'Confidence=' + '{:.1f}'.format(faceDetail['Confidence']) + '%'
 
         text_width, text_height = font.getsize(annotation)
@@ -139,10 +140,10 @@ def get_image_filename():
 
     files = os.listdir(last_dir_path)
 
-    files.sort(key=lambda x: x)
+    # TODO files.sort(key=lambda x: x)
 
     if len(files) == 0:
-        print('WARNING: len(files) == 0')
+        print('WARNING: No files found')
         return None
 
     # Last image is the one we are looking for
@@ -153,7 +154,7 @@ def get_image_filename():
         return os.path.join(last_dir_path, last_image)
     else:
         if len(files) < 2:
-            print('WARNING: len(files) < 2')
+            print('WARNING: Less than 2 image files')
             return None
         last_image = files[-2]
         return os.path.join(last_dir_path, last_image)
@@ -189,7 +190,7 @@ def check(image_file, client, show=False):
             for label in response['FaceDetails']:
 
                 if label['EyesOpen']['Value']:
-                    if label['EyesOpen']['Confidence'] >= 90.0:
+                    if label['EyesOpen']['Confidence'] >= CONFIDENCE_THRESHOLD:
                         eyes_open, tag = True, 'eyes_open'
                     else:
                         eyes_open, tag = False, 'eyes_probably_closed'
@@ -197,7 +198,7 @@ def check(image_file, client, show=False):
                     eyes_open, tag = False, 'eyes_closed'
 
                 tag = tag + '_' + '{:.1f}'.format(label['EyesOpen']['Confidence']) + '_' +\
-                      '{:.1f}'.format(label['Confidence'])
+                            '{:.1f}'.format(label['Confidence'])
 
         elif response['FaceDetails'] is not None and len(response['FaceDetails']) > 0:
 
@@ -303,7 +304,7 @@ if __name__ == "__main__":
             localtime = time.localtime()
             timestamp = time.strftime("%I:%M:%S %p", localtime)
 
-            signal = " |||||||||||||" if eyes_open else " -------------"
+            signal = " |||||||||||||" if eyes_open else " ............."
             print(timestamp + ': ' + os.path.basename(last_image) + ': ' + tag + signal)
 
             name, extension = os.path.basename(last_image).split('.')

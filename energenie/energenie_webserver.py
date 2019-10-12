@@ -65,8 +65,7 @@ class MyHandler(SimpleHTTPRequestHandler, object):
             # self.wfile.close()
 
         except Exception:
-            print('Caught exception!')
-            print(sys.exc_info()[0])
+            print(('do_GET(): Caught exception:', sys.exc_info()[0]))
             traceback.print_exc()
 
 
