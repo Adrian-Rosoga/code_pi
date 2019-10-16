@@ -84,7 +84,7 @@ body_template = """<HTML>
 def get_picture_filename():
     # Filter for directory names starting with '201'
     try:
-        last_dir_name = max([dir for dir in os.listdir('.') if dir.find('2019') != -1])
+        last_dir_name = max([directory for directory in os.listdir('.') if directory.find('2019') != -1])
         if last_dir_name is None:
             print('WARNING: last_dir_name == None')
             return None
@@ -152,19 +152,16 @@ class MyHandler(SimpleHTTPRequestHandler, object):
                 self.send_response(200)
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
-
                 self.wfile.write(b'Testing. Site under construction.')
                 return
 
             elif self.path == "/favicon.ico":
                 with open(FAVICON, 'rb') as f:
                     favicon = f.read()
-
-                self.send_response(200)
-                self.end_headers()
-
-                self.wfile.write(favicon)
-                return
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(favicon)
+                    return
 
             elif self.path != "/tl":
                 return SimpleHTTPRequestHandler.do_GET(self)
@@ -173,7 +170,6 @@ class MyHandler(SimpleHTTPRequestHandler, object):
                 self.send_response(200)
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
-
                 self.wfile.write(str.encode(make_body()))
 
         except socket.error as e:
@@ -200,4 +196,6 @@ try:
 
 except KeyboardInterrupt:
     print("\n^C received, shutting down server")
+
+finally:
     server.socket.close()
