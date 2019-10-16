@@ -12,6 +12,8 @@ import os
 import pprint
 import unittest
 import io
+import logging
+import argparse
 from PIL import Image, ImageDraw, ExifTags, ImageColor, ImageFont
 from PIL.ExifTags import TAGS
 
@@ -21,6 +23,7 @@ ON = True
 OFF = False
 PHOTO_DIR = '/tmp/timelapse'
 IMAGE_DESTINATION_DIR = '/media/pi/PI_STICK/awake_detector/'
+MIN_HOUR, MAX_HOUR = 5, 6
 
 
 def get_exif(pil_image):
@@ -45,7 +48,6 @@ def show_faces(response, stream, image_file, tag):
 
     #  Find out available fonts with fc-list
     font = ImageFont.truetype("FreeSansBold.ttf", 32)
-    # font = ImageFont.truetype('arial', 32)
 
     exif_info = get_exif(image)
     # '2019:10:03 11:24:52'
@@ -56,7 +58,7 @@ def show_faces(response, stream, image_file, tag):
 
     text_width, text_height = font.getsize(date_taken)
     draw.rectangle((0, 0, text_width, 40), fill='black')
-    draw.text((0, 0), date_taken, fill='yellow', font=font)
+    draw.text((0, 0), '*** PiRekognition *** ' + date_taken, fill='yellow', font=font)
 
     # Display bounding boxes for each detected face
     for faceDetail in response['FaceDetails']:
@@ -123,27 +125,27 @@ def get_image_filename():
     try:
         last_dir_name = max(filter(lambda dir: dir.find('2019') != -1, os.listdir('.')))
         if last_dir_name is None:
-            print('WARNING: last_dir_name == None')
+            logging.info('No directory ending in 2019')
             return None
         if len(last_dir_name) == 0:
-            print('WARNING: len(last_dir_name) == 0')
+            logging.info('No directory ending in 2019')
             return None
     except:
-        print('WARNING: exception thrown - no dir starting with 201')
+        logging.info('exception thrown - no directory starting with 201')
         return None
 
     last_dir_path = os.path.join('.', last_dir_name)
     if not os.path.isdir(last_dir_path):
-        print('WARNING: not os.path.isdir(last_dir_path)')
-        print('last_dir_path = ' + last_dir_path)
+        logging.info('path is not a directory')
+        logging.info('last_dir_path = %s', last_dir_path)
         return None
 
     files = os.listdir(last_dir_path)
 
-    # TODO files.sort(key=lambda x: x)
+    files.sort(key=lambda x: x)
 
     if len(files) == 0:
-        print('WARNING: No files found')
+        logging.info('No files in directory')
         return None
 
     # Last image is the one we are looking for
@@ -154,7 +156,7 @@ def get_image_filename():
         return os.path.join(last_dir_path, last_image)
     else:
         if len(files) < 2:
-            print('WARNING: Less than 2 image files')
+            logging.info('Less than 2 image files')
             return None
         last_image = files[-2]
         return os.path.join(last_dir_path, last_image)
@@ -166,9 +168,9 @@ def copy_file(image_file, tag):
         cmd = 'cp ' + image_file + ' ' + IMAGE_DESTINATION_DIR + name + '_' + tag + '.' + extension
         os.system(cmd)
     except IOError as e:
-        print("Unable to copy file. %s" % e)
+        logging.info("Unable to copy file. %s" % e)
     except:
-        print("Unexpected error:", sys.exc_info())
+        logging.info("Unexpected error:", sys.exc_info())
 
 
 def action(on_off):
@@ -179,6 +181,7 @@ def action(on_off):
 
 
 def check(image_file, client, show=False):
+
     eyes_open = None
     tag = ''
 
@@ -252,31 +255,19 @@ class AwakeTestQuick(unittest.TestCase):
         self.assertEqual(tag, 'no_face_details')
 
 
-if __name__ == "__main__":
+def check_file(image_file, verbose=False):
 
-    continuous = False
+    client = boto3.client('rekognition')
+    response, eyes_open, tag = check(image_file, client, show=True)
+    if verbose:
+        pprint.pprint(response)
+        print('\n')
+    logging.info('Eyes open: %s', eyes_open)
+    logging.info('tag: %s', tag)
+    return 0
 
-    if len(sys.argv) >= 2 and sys.argv[1] == 'test':
-        del sys.argv[1]
-        sys.exit(unittest.main())
 
-    if len(sys.argv) == 2:
-
-        if sys.argv[1] == 'test':
-            del sys.argv[1:]
-            unittest.main()
-            sys.exit(0)
-        if sys.argv[1] == 'c':
-            continuous = True
-        else:
-            image_file = sys.argv[1]
-            client = boto3.client('rekognition')
-            response, eyes_open, tag = check(image_file, client, show=True)
-            pprint.pprint(response)
-            print('\n')
-            print('Eyes open:', eyes_open)
-            print('tag:', tag)
-            sys.exit(0)
+def check_continuously(verbose=False):
 
     client = boto3.client('rekognition')
     os.chdir(PHOTO_DIR)
@@ -285,12 +276,12 @@ if __name__ == "__main__":
 
         timestamp = time.localtime()
 
-        if continuous or (5 <= timestamp.tm_hour <= 6):
+        if args.force or (MIN_HOUR <= timestamp.tm_hour <= MAX_HOUR):
 
             last_image = get_image_filename()
             last_image = os.path.join(PHOTO_DIR, last_image)
 
-            # print('Processing image', last_image)
+            logging.info('Processing image %s', last_image)
 
             response, eyes_open, tag = check(last_image, client, show=True)
 
@@ -301,21 +292,42 @@ if __name__ == "__main__":
 
             # copy_file(last_image, tag)
 
-            localtime = time.localtime()
-            timestamp = time.strftime("%I:%M:%S %p", localtime)
-
             signal = " |||||||||||||" if eyes_open else " ............."
-            print(timestamp + ': ' + os.path.basename(last_image) + ': ' + tag + signal)
+            logging.info(os.path.basename(last_image) + ': ' + tag + signal)
 
             name, extension = os.path.basename(last_image).split('.')
             response['ImageAnnotated'] = name + '_' + tag + '.' + extension
 
-            # pprint.pprint(response)
-            # print('\n')
+            if verbose:
+                pprint.pprint(response)
+                print('\n')
 
         else:
 
-            print('Outside checking hours, now hour is', timestamp.tm_hour)
+            logging.info("Outside detection interval %s <= hour <= %s", MIN_HOUR, MAX_HOUR)
 
-        print('Sleeping now', MINS_TO_SLEEP, 'minutes...')
+        logging.info('Sleeping now %s minutes...', MINS_TO_SLEEP)
         time.sleep(MINS_TO_SLEEP * 60)
+
+
+if __name__ == "__main__":
+
+    logging.basicConfig(format="%(asctime)-15s %(message)s",
+                        datefmt='%Y-%m-%d %H:%M:%S',
+                        level=logging.INFO)
+
+    parser = argparse.ArgumentParser(description='Detect Awake')
+    parser.add_argument('-t', '--test', help='run unittests', action="store_true")
+    parser.add_argument('-f', '--file', help='analyze image file')
+    parser.add_argument('-x', '--force', help='run outside the time window', action="store_true")
+    parser.add_argument('-v', '--verbose', help='verbose', action="store_true")
+    args = parser.parse_args()
+
+    if args.test:
+        del sys.argv[1]
+        sys.exit(unittest.main())
+    elif args.file is not None:
+        image_file = args.file
+        sys.exit(check_file(image_file, verbose=args.verbose))
+    else:
+        check_continuously(verbose=args.verbose)
