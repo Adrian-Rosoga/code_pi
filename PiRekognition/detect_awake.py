@@ -281,7 +281,7 @@ def check_continuously(verbose=False):
             last_image = get_image_filename()
             last_image = os.path.join(PHOTO_DIR, last_image)
 
-            logging.info('Processing image %s', last_image)
+            # logging.info('Processing image %s', last_image)
 
             response, eyes_open, tag = check(last_image, client, show=True)
 
@@ -306,7 +306,7 @@ def check_continuously(verbose=False):
 
             logging.info("Outside detection interval %s <= hour <= %s", MIN_HOUR, MAX_HOUR)
 
-        logging.info('Sleeping now %s minutes...', MINS_TO_SLEEP)
+        # logging.info('Sleeping now %s minutes...', MINS_TO_SLEEP)
         time.sleep(MINS_TO_SLEEP * 60)
 
 
