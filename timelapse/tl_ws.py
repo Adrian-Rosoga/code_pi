@@ -6,7 +6,6 @@ Adrian Rosoga
 Version 1.0, 14 Jan 2014, refactored 29 Sep 2018
 """
 
-import re
 import time
 import sys
 import os
@@ -17,7 +16,7 @@ import logging
 import argparse
 from http.server import HTTPServer
 from http.server import SimpleHTTPRequestHandler
-sys.path.append('/home/pi/code_pi/HTU21D')
+sys.path.append('/home/pi/code_pi/utilpy')
 import HTU21D
 
 
@@ -31,10 +30,15 @@ TODO
 #
 # Configuration
 #
-PORT = 8007
-FAVICON = '/home/pi/code_pi/timelapse/favicon.ico'
-OUT_OF_HOURS = '/home/pi/code_pi/timelapse/out_of_hours.jpg'
-DS18B20_OUTPUT_FILE = '/sys/bus/w1/devices/28-0000045bf342/w1_slave'
+FAVICON_PATH = '/home/pi/code_pi/timelapse/favicon.ico'
+OUT_OF_HOURS_IMAGE_PATH = '/home/pi/code_pi/timelapse/out_of_hours.jpg'
+
+
+class Registry(object):
+    title = "TITLE"
+    refresh = 10
+    port = 8007
+
 
 BODY_TEMPLATE = """<HTML>
 <HEAD>
@@ -43,7 +47,7 @@ BODY_TEMPLATE = """<HTML>
 <META HTTP-EQUIV=EXPIRES CONTENT=-1>
 <META HTTP-EQUIV=REFRESH CONTENT={refresh}>
 </HEAD>
-<BODY BGCOLOR="BLACK" BACKGROUND_X="grill.jpg">
+<BODY BGCOLOR="BLACK" BACKGROUND_XDISABLE="grill.jpg">
 <H2 ALIGN="CENTER">
 <B><FONT COLOR="YELLOW">{info}</FONT></B>
 </H2>
@@ -54,36 +58,7 @@ BODY_TEMPLATE = """<HTML>
 </HTML>"""
 
 
-class Registry(object):
-    title = "TITLE"
-    refresh = 10
-
-
-def run_cmd(cmd):
-    """ Utility that gets the first line from a cmd launched on a shell """
-    pipe = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    output = pipe.communicate()[0]
-    return str(output)
-
-
-regex = re.compile(r't=(\d+)')
-
-
-def get_temperature_DS18B20():
-
-    # Uncomment if no temperature sensor attached
-    return 'N/A'
-
-    file = open(DS18B20_OUTPUT_FILE, 'r')
-    file.readline()
-    line = file.readline()
-    file.close()
-    data = regex.search(line)
-    temperature = float(data.group(1)[0:4]) / 100.0
-    return temperature
-
-
-def get_temperature():
+def get_climate():
     temperature, humidity = HTU21D.get_temperature_humidity()
     if temperature is None or humidity is None:
         return "N/A"
@@ -136,11 +111,11 @@ def get_picture_filename():
 def make_body():
     image = get_picture_filename()
     if image is None:
-        image = 'out_of_hours.jpg'
-        info = str(get_temperature())
+        image = 'OUT_OF_HOURS_IMAGE_PATH.jpg'
+        info = str(get_climate())
     else:
         last_modified_date = time.ctime(os.path.getmtime(image))
-        info = last_modified_date + ' --- ' + str(get_temperature())
+        info = last_modified_date + ' --- ' + str(get_climate())
 
     return BODY_TEMPLATE.format(image=image, info=info, title=Registry.title, refresh=Registry.refresh)
 
@@ -158,7 +133,7 @@ class WebcamHandler(SimpleHTTPRequestHandler, object):
                 return
 
             elif self.path == "/favicon.ico":
-                with open(FAVICON, 'rb') as f:
+                with open(FAVICON_PATH, 'rb') as f:
                     content = f.read()
                     self.send_response(200)
                     self.end_headers()
@@ -166,7 +141,7 @@ class WebcamHandler(SimpleHTTPRequestHandler, object):
                     return
 
             elif self.path == "/out_of_hours.jpg":
-                with open(OUT_OF_HOURS, 'rb') as f:
+                with open(OUT_OF_HOURS_IMAGE_PATH, 'rb') as f:
                     content = f.read()
                     self.send_response(200)
                     self.end_headers()
@@ -182,11 +157,11 @@ class WebcamHandler(SimpleHTTPRequestHandler, object):
                 self.end_headers()
                 self.wfile.write(str.encode(make_body()))
 
+        # Most of the time "<class 'socket.error'>, error: [Errno 113] No route to host" gets thrown
         except socket.error as e:
             logging.info('do_GET(): Caught socket.error exception:', e)
             traceback.print_exc()
 
-        # Usually is <class 'socket.error'>, error: [Errno 113] No route to host
         except Exception:
             logging.info('do_GET(): Caught exception:', sys.exc_info()[0])
             traceback.print_exc()
@@ -200,24 +175,27 @@ try:
     parser = argparse.ArgumentParser(description='WebServer')
     parser.add_argument('--title', help='set title')
     parser.add_argument('--refresh', help='automatic refresh in seconds')
+    parser.add_argument('--port', help='port')
     args = parser.parse_args()
 
     if args.title:
         Registry.title = args.title
     if args.refresh:
         Registry.refresh = args.refresh
+    if args.port:
+        Registry.port = args.port
 
     timelapse_dir = subprocess.check_output(['readlink', 'timelapse_dir']).rstrip()
     logging.info('Image directory: %s', timelapse_dir.decode())
 
     os.chdir(timelapse_dir)
 
-    server = HTTPServer(('', PORT), WebcamHandler)
-    logging.info('Started the webcam HTTP server on port %s', PORT)
+    server = HTTPServer(('', Registry.port), WebcamHandler)
+    logging.info('Started the HTTP server on port %s', Registry.port)
     server.serve_forever()
 
 except KeyboardInterrupt:
-    logging.info("\n^C received, shutting down server")
+    logging.info("\n^C received, shutting down the HTTP server")
 
 finally:
     server.socket.close()
