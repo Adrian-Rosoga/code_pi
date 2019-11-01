@@ -13,8 +13,12 @@ import os
 import socket
 import traceback
 import subprocess
+import logging
+import argparse
 from http.server import HTTPServer
 from http.server import SimpleHTTPRequestHandler
+sys.path.append('/home/pi/code_pi/HTU21D')
+import HTU21D
 
 
 """
@@ -57,10 +61,11 @@ def get_temperature_DS18B20():
 
 
 def get_temperature():
-
-    # Uncomment if no temperature sensor attached
-    # return 'N/A'
-    return run_cmd('sudo /home/pi/code_pi/HTU21/HTU21D.py')
+    temperature, humidity = HTU21D.get_temperature_humidity()
+    if temperature is None or humidity is None:
+        return "N/A"
+    else:
+        return "{0:0.1f}&deg;C - {1:0.1f}%H".format(temperature, humidity)
 
 
 body_template = """<HTML>
@@ -137,7 +142,7 @@ def make_body():
         body = body.replace('XXX_IMAGE_XXX', image)
 
         body = body.replace('XXX_INFO_XXX', image + ' --- ' + str(get_temperature()) +
-                            '--- ' + last_modified_date)
+                            ' --- ' + last_modified_date)
         # body = body.replace('XXX_INFO_XXX', 'St. George Wharf *** ' + last_modified_date)
 
     return body
@@ -152,7 +157,7 @@ class MyHandler(SimpleHTTPRequestHandler, object):
                 self.send_response(200)
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
-                self.wfile.write(b'Testing. Site under construction.')
+                self.wfile.write(b'Site under construction.')
                 return
 
             elif self.path == "/favicon.ico":
@@ -183,19 +188,21 @@ class MyHandler(SimpleHTTPRequestHandler, object):
 
 
 try:
+    logging.basicConfig(format="%(asctime)-15s %(message)s",
+                        datefmt='%Y-%m-%d %H:%M:%S',
+                        level=logging.INFO)
+
     timelapse_dir = subprocess.check_output(['readlink', 'timelapse_dir']).rstrip()
-    print('Image directory:', timelapse_dir.decode())
+    logging.info('Image directory: %s', timelapse_dir.decode())
 
     os.chdir(timelapse_dir)
 
     server = HTTPServer(('', PORT), MyHandler)
-    print('Started the webcam HTTP server on port', PORT)
+    logging.info('Started the webcam HTTP server on port %s', PORT)
     server.serve_forever()
 
-    print('CRASHED OUT OF THE SERVER LOOP')
-
 except KeyboardInterrupt:
-    print("\n^C received, shutting down server")
+    logging.info("\n^C received, shutting down server")
 
 finally:
     server.socket.close()

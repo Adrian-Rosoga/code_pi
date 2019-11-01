@@ -83,18 +83,20 @@ class HTU21D(object):
         else:
             return -255
 
-if __name__ == "__main__":
 
+def get_temperature_humidity():
     try:
         obj = HTU21D()
+        return obj.read_temperature(), obj.read_humidity()
+    except:
+        return None, None
 
-        #print("Temp: %s C" % obj.read_temperature())
-        #print("Humid: %s %% rH" % obj.read_humidity())
 
+if __name__ == "__main__":
+    try:
+        obj = HTU21D()
         temperature = "{0:0.1f}".format(obj.read_temperature())
         humidity = "{0:0.1f}".format(obj.read_humidity())
         print(temperature, '&deg;C -', humidity, '%H')
-
     except:
-
         print('HTU21D N/A!')
