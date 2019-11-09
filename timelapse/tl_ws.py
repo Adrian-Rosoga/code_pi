@@ -157,13 +157,14 @@ class WebcamHandler(SimpleHTTPRequestHandler, object):
                 self.end_headers()
                 self.wfile.write(str.encode(make_body()))
 
-        # Most of the time "<class 'socket.error'>, error: [Errno 113] No route to host" gets thrown
-        except socket.error as e:
-            logging.info('do_GET(): Caught socket.error exception:', e)
+        # With Python 2: "<class 'socket.error'>, error: [Errno 113] No route to host" gets thrown
+        # With Python 3: OSError: [Errno 113] No route to host
+        except (socket.error, OSError) as e:
+            logging.info('do_GET(): Caught socket.error/OSError exception: %s', e)
             traceback.print_exc()
 
         except Exception:
-            logging.info('do_GET(): Caught exception:', sys.exc_info()[0])
+            logging.info('do_GET(): Caught exception: %s', sys.exc_info()[0])
             traceback.print_exc()
 
 
