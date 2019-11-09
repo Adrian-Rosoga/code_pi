@@ -1,8 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
+
 import struct
 import array
 import time
 import i2c_base
+from ilock import ILock
 
 HTU21D_ADDR = 0x40
 CMD_READ_TEMP_HOLD = b"\xE3"
@@ -61,7 +63,7 @@ class HTU21D(object):
             temp = (buf[0] << 8 | buf[1]) & 0xFFFC
             return self.ctemp(temp)
         else:
-            return -255
+            return None
 
     def read_humidity(self):
         temp_actual = self.read_temperature()  # For temperature coefficient compensation
@@ -81,13 +83,14 @@ class HTU21D(object):
 
             return rh_final
         else:
-            return -255
+            return None
 
 
 def get_temperature_humidity():
     try:
-        obj = HTU21D()
-        return obj.read_temperature(), obj.read_humidity()
+        with ILock('HTU21D'):
+            obj = HTU21D()
+            return obj.read_temperature(), obj.read_humidity()
     except:
         return None, None
 
