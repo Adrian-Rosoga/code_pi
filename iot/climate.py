@@ -4,15 +4,17 @@ import os
 import sys
 import time
 import logging
+import traceback
 from datetime import datetime
 from Adafruit_IO import Client, Feed
 sys.path.append('/home/pi/code_pi/utilpy')
-import HTU21D
+import HTU21D  # noqa
 
 # Delay in-between sensor readings, in seconds.
 READ_INTERVAL = 60
 ADAFRUIT_IO_KEY = os.environ['ADAFRUIT_IO_KEY']
 ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
+
 
 def send_readings(aio, *feeds):
 
