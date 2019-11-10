@@ -10,8 +10,8 @@ from Adafruit_IO import Client, Feed
 sys.path.append('/home/pi/code_pi/utilpy')
 import HTU21D  # noqa
 
-# Delay in-between sensor readings, in seconds.
-READ_INTERVAL = 60
+
+READ_INTERVAL = 60  # In-between sensor readings, in seconds.
 ADAFRUIT_IO_KEY = os.environ['ADAFRUIT_IO_KEY']
 ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
 
@@ -51,8 +51,6 @@ def main():
 
         try:
             send_readings(aio, temperature_feed, humidity_feed, last_updated_feed)
-        # except simplejson.errors.JSONDecodeError as ex:
-        #     logging.info('simplejson.errors.JSONDecodeError caught')
         except Exception as ex:
             logging.info('Caught exception: %s', ex.__class__.__name__)
             traceback.print_exc()
