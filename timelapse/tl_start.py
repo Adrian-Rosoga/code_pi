@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 """
 Timelapse Starter - meant to be invoked from cron
@@ -41,22 +41,14 @@ CONFIG_TIME_LIMIT = '-t 100000'  # 10 photos at one photo every 10 secs
 #CONFIG_DATE_IN_NAME = ''           # No
 CONFIG_DATE_IN_NAME = '-dt'         # Yes
 
-TIMELAPSE_CODE_PATH='/home/pi/code_pi/timelapse'
-os.chdir(TIMELAPSE_CODE_PATH)
-
-
-def run_cmd(cmd):
-    """ Utility that gets the first line from a cmd launched on a shell """
-    pipe = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    output = pipe.communicate()[0]
-    return output
+TIMELAPSE_CODE_PATH = '/home/pi/code_pi/timelapse'
 
 
 def get_capture_dir():
     """ Create sub-directory where pictures go """
 
-    timelapse_dir = sp.check_output(['readlink', 'timelapse_dir']).rstrip()
-    print 'timelapse_dir =', timelapse_dir
+    timelapse_dir = sp.check_output(['readlink', 'timelapse_dir']).rstrip().decode('utf-8')
+    print('timelapse_dir =', timelapse_dir)
 
     capture_dir = timelapse_dir
 
@@ -70,24 +62,23 @@ def get_capture_dir():
 
     if os.path.isdir(capture_dir):
         return capture_dir
-        
+
     return_code = sp.call(['mkdir', capture_dir])
     if return_code:
-        print 'Error: Cannot create the capture directory', capture_dir
+        print('Error: Cannot create the capture directory', capture_dir)
         sys.exit(1)
 
     return_code = sp.call(['chmod', 'ago+rw', capture_dir])
     if return_code:
-        print 'Error: Cannot chmod for directory', capture_dir
+        print('Error: Cannot chmod for directory', capture_dir)
         sys.exit(1)
-    
+
     return capture_dir
 
 
-def start_capture(capture_dir, run_in_background = True):
-    """ Start capture """
-    
-    print 'Capture directory:', capture_dir
+def start_capture(capture_dir, run_in_background=True):
+
+    print('Capture directory:', capture_dir)
     
     ampersand = ''
     if run_in_background:
@@ -108,28 +99,28 @@ def start_capture(capture_dir, run_in_background = True):
     # Stop LED
     GPIO.output(CAMLED, False)
     
-    print datetime.now().strftime("%H:%M:%S"), cmd
+    print(datetime.now().strftime("%H:%M:%S"), cmd)
     ret_code = os.system(cmd)
     if ret_code:
         #print 'Error starting capture! Exiting.'
         #sys.exit(1)
         pass
     else:
-        print datetime.now().strftime("%H:%M:%S"), 'Capture started!'
+        print(datetime.now().strftime("%H:%M:%S"), 'Capture started!')
         #time.sleep(2)
         #GPIO.output(CAMLED, False)
 
 
 def stop_capture():
     """ Stop capture """
-    
+
     sp.call(['pkill', 'raspistill'])
-    print 'Capture stopped!'
+    print('Capture stopped!')
 
 
 def cleanup_dir(timelapse_dir):
     ''' Keep only FILES_TO_KEEP files '''
-    
+
     while True:
         files = sorted(os.listdir(timelapse_dir))
         number_files = len(files)
@@ -140,14 +131,16 @@ def cleanup_dir(timelapse_dir):
             os.remove(timelapse_dir + '/' + files[count])
             count += 1
             number_files -= 1
-            
+
         time.sleep(30)        
 
+
 def watchdog():
-    
+
     while True:
-        
+
         time.sleep(30)
+
 
 def run_default():
 
@@ -163,7 +156,7 @@ def run_default():
 
     # If entered with an argument only keep the last files
     if len(sys.argv) > 1:
-        print "Running cleanup..."
+        print("Running cleanup...")
         cleanup_dir(capture_dir)
     
 
@@ -178,21 +171,22 @@ def run_loop():
     capture_dir = get_capture_dir()
 
     CONFIG_TIME_LIMIT = '-t 100000'  # 10 photos at one photo every 10 secs
-    
+
     while True:
-    
+   
         #start_capture(capture_dir, False)
         #time.sleep(TIMELAPSE_SECS_BETWEEN_PICTURES - 2)
-        
+
         start_capture(capture_dir, True)
-        print datetime.now().strftime("%H:%M:%S"), "Sleeping..."
+        print(datetime.now().strftime("%H:%M:%S"), "Sleeping...")
         time.sleep(100 + 10)
-        print datetime.now().strftime("%H:%M:%S"), "Killing..."
+        print(datetime.now().strftime("%H:%M:%S"), "Killing...")
         stop_capture()
 
-    
+
 def main():
-    """ main """
+
+    os.chdir(TIMELAPSE_CODE_PATH)
 
     # For "RuntimeWarning: This channel is already in use, continuing anyway."
     # use GPIO.setwarnings(False) to disable warning.
