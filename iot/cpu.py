@@ -5,6 +5,7 @@ import time
 import logging
 import traceback
 import argparse
+import platform
 from Adafruit_IO import RequestError, Client, Feed
 
 
@@ -63,7 +64,7 @@ def main():
 
     aio = Client(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
 
-    hostname = os.environ['HOSTNAME'].lower()
+    hostname = platform.node().lower()
     feed_name = "cpu-" + hostname
     
     report_cpu(aio, feed_name, reporting_interval)
