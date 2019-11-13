@@ -31,13 +31,15 @@ def cpu_utilisation():
     return utilisation
 
 
-def report_cpu(aio, feed, reporting_interval):
+def report_cpu(aio, feed_name, reporting_interval):
     """ Report CPU on feed """
+
+    feed = aio.feeds(feed_name)  # Feed should exist
 
     while True:
         try:
             utilisation = cpu_utilisation()
-            logging.info('CPU {utilisation}%'.format(utilisation=utilisation))
+            logging.info('Feed=' + feed_name + ' CPU={utilisation:.1f}%'.format(utilisation=utilisation))
             aio.send(feed.key, utilisation)
 
         except Exception as e:
@@ -60,9 +62,11 @@ def main():
     reporting_interval = int(args.interval) if args.interval else REPORTING_INTERVAL_DEFAULT_SECS
 
     aio = Client(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
-    cpu_feed = aio.feeds("cpu-pi3")  # Feed should exist
 
-    report_cpu(aio, cpu_feed, reporting_interval)
+    hostname = os.environ['HOSTNAME'].lower()
+    feed_name = "cpu-" + hostname
+    
+    report_cpu(aio, feed_name, reporting_interval)
 
 
 if __name__ == "__main__":
