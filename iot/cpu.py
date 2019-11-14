@@ -14,22 +14,21 @@ ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
 
 REPORTING_INTERVAL_DEFAULT_SECS = 10
 
-""" Hack alert - bad idea to use these globals! """
-last_idle = last_total = 0.0
-idle_delta = total_delta = 0.0
-
 
 def cpu_utilisation():
     """ Get CPU utilisation """
-    global last_idle, last_total, idle_delta, total_delta
 
-    with open('/proc/stat') as f:
-        fields = [float(column) for column in f.readline().strip().split()[1:]]
-    idle, total = fields[3], sum(fields)
-    idle_delta, total_delta = idle - last_idle, total - last_total
-    last_idle, last_total = idle, total
-    utilisation = 100.0 * (1.0 - idle_delta / total_delta)
-    return utilisation
+    last_idle = last_total = 0.0
+    idle_delta = total_delta = 0.0
+
+    while True:
+        with open('/proc/stat') as f:
+            fields = [float(column) for column in f.readline().strip().split()[1:]]
+        idle, total = fields[3], sum(fields)
+        idle_delta, total_delta = idle - last_idle, total - last_total
+        last_idle, last_total = idle, total
+        utilisation = 100.0 * (1.0 - idle_delta / total_delta)
+        yield utilisation
 
 
 def report_cpu(aio, feed_name, reporting_interval):
@@ -37,9 +36,11 @@ def report_cpu(aio, feed_name, reporting_interval):
 
     feed = aio.feeds(feed_name)  # Feed should exist
 
+    cpu_utilisation_generator = cpu_utilisation()
+
     while True:
         try:
-            utilisation = cpu_utilisation()
+            utilisation = next(cpu_utilisation_generator)
             logging.info('Feed=' + feed_name + ' CPU={utilisation:.1f}%'.format(utilisation=utilisation))
             aio.send(feed.key, utilisation)
 
