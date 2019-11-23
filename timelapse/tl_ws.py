@@ -17,7 +17,7 @@ import argparse
 from http.server import HTTPServer
 from http.server import SimpleHTTPRequestHandler
 sys.path.append('/home/pi/code_pi/utilpy')
-import HTU21D
+import HTU21D  # noqa
 
 
 """
@@ -120,7 +120,9 @@ def make_body():
     return BODY_TEMPLATE.format(image=image, info=info, title=Registry.title, refresh=Registry.refresh)
 
 
-class WebcamHandler(SimpleHTTPRequestHandler, object):
+class WebcamHandler(SimpleHTTPRequestHandler):
+
+    request_count = 0
 
     def do_GET(self):
 
@@ -156,6 +158,9 @@ class WebcamHandler(SimpleHTTPRequestHandler, object):
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
                 self.wfile.write(str.encode(make_body()))
+
+                WebcamHandler.request_count = WebcamHandler.request_count + 1
+                logging.info('Number requests: %s', WebcamHandler.request_count)
 
         # With Python 2: "<class 'socket.error'>, error: [Errno 113] No route to host" gets thrown
         # With Python 3: OSError: [Errno 113] No route to host

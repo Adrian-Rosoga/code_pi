@@ -4,6 +4,10 @@ import struct
 import array
 import time
 import i2c_base
+import portalocker
+import logging
+import sys
+import traceback
 from ilock import ILock
 
 HTU21D_ADDR = 0x40
@@ -14,6 +18,9 @@ CMD_READ_HUM_NOHOLD = b"\xF5"
 CMD_WRITE_USER_REG = b"\xE6"
 CMD_READ_USER_REG = b"\xE7"
 CMD_SOFT_RESET = b"\xFE"
+
+
+LOCK_FILE = '/tmp/HTU21D-lock'
 
 
 class HTU21D(object):
@@ -86,12 +93,25 @@ class HTU21D(object):
             return None
 
 
-def get_temperature_humidity():
+def get_temperature_humidity_RACE_CONDITION():
     try:
         with ILock('HTU21D'):
             obj = HTU21D()
             return obj.read_temperature(), obj.read_humidity()
-    except:
+    except Exception:
+        logging.info('Caught exception: %s', sys.exc_info()[0])
+        traceback.print_exc()
+        return None, None
+
+
+def get_temperature_humidity():
+    try:
+        with portalocker.Lock(LOCK_FILE, 'rb+') as fh:
+            obj = HTU21D()
+            return obj.read_temperature(), obj.read_humidity()
+    except Exception:
+        logging.info('Caught exception: %s', sys.exc_info()[0])
+        traceback.print_exc()
         return None, None
 
 
