@@ -37,19 +37,19 @@ def get_picture_filename():
     try:
         last_dir_name = max([directory for directory in os.listdir('.') if directory.find('2019') != -1])
         if last_dir_name is None:
-            logging.info('WARNING: last_dir_name == None')
+            app.logger.info('WARNING: last_dir_name == None')
             return None
         if len(last_dir_name) == 0:
-            logging.info('WARNING: len(last_dir_name) == 0')
+            app.logger.info('WARNING: len(last_dir_name) == 0')
             return None
     except Exception:
-        logging.info('WARNING: exception thrown - no dir starting with 201', sys.exc_info()[0])
+        app.logger.info('WARNING: exception thrown - no dir starting with 201', sys.exc_info()[0])
         return None
 
     last_dir_path = os.path.join('.', last_dir_name)
     if not os.path.isdir(last_dir_path):
-        logging.info('WARNING: not os.path.isdir(last_dir_path)')
-        logging.info('last_dir_path = ' + last_dir_path)
+        app.logger.info('WARNING: not os.path.isdir(last_dir_path)')
+        app.logger.info('last_dir_path = ' + last_dir_path)
         return None
 
     files = os.listdir(last_dir_path)
@@ -57,7 +57,7 @@ def get_picture_filename():
     files.sort(key=lambda x: x)
 
     if len(files) == 0:
-        logging.info('WARNING: len(files) == 0')
+        app.logger.info('WARNING: len(files) == 0')
         return None
 
     # Last picture is the one we are looking for
@@ -68,7 +68,7 @@ def get_picture_filename():
         return os.path.join(last_dir_path, last_picture)
     else:
         if len(files) < 2:
-            logging.info('WARNING: len(files) < 2')
+            app.logger.info('WARNING: len(files) < 2')
             return None
         last_picture = files[-2]
         return os.path.join(last_dir_path, last_picture)
@@ -90,13 +90,13 @@ def index():
 
     image = get_picture_filename()
     if image is None:
-        image = 'OUT_OF_HOURS_IMAGE_PATH.jpg'
+        image = 'out_of_hours.jpg'
         info = str(get_climate())
+        image = "".join(["/static/", image])
     else:
         last_modified_date = time.ctime(os.path.getmtime(image))
         info = last_modified_date + ' --- ' + str(get_climate())
-
-    image = "".join(["/static/timelapse/", image])
+        image = "".join(["/static/timelapse/", image])
 
     request_count = request_count + 1
 
