@@ -1,0 +1,48 @@
+h2 {
+    color: navajowhite;
+    font-size: 20px;
+}
+
+body {
+    background: rgb(11, 16, 31);
+}
+
+.container {
+    position: relative;
+    text-align: center;
+    color: navajowhite;
+    font-size: 40px;
+    font-weight: bold;
+  }
+  
+  .bottom-left {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+  }
+  
+  .top-left {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background-color:rgb(11, 11, 36);
+  }
+  
+  .top-right {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+  
+  .bottom-right {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+  }
+  
+  .centered {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
