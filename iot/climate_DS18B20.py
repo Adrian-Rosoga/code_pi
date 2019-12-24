@@ -17,6 +17,7 @@ ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
 
 DS18B20_OUTPUT_FILE = '/sys/bus/w1/devices/28-0000045bf342/w1_slave'
 
+
 class Registry():
     reporting_interval = REPORTING_INTERVAL_SECS_DEFAULT
 
@@ -61,7 +62,7 @@ def main():
     if args.interval:
         Registry.reporting_interval = int(args.interval)
     display_only = args.display_only
-    
+
     # REST client.
     aio = Client(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
 
@@ -82,8 +83,8 @@ def main():
             if not display_only:
                 send_readings(aio, temperature, temperature_feed, last_updated_feed)
 
-        #except Adafruit_IO.errors.ThrottlingError as ex:
-        #    logging.info('Throttling occured - Caught exception: %s', ex.__class__.__name__)
+        except Adafruit_IO.errors.ThrottlingError as ex:
+            logging.info('Throttling occured - Caught exception: %s', ex.__class__.__name__)
         except Exception as ex:
             logging.info('Caught exception: %s', ex.__class__.__name__)
             traceback.print_exc()
