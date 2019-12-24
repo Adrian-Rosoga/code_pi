@@ -168,9 +168,9 @@ def copy_file(image_file, tag):
         cmd = 'cp ' + image_file + ' ' + IMAGE_DESTINATION_DIR + name + '_' + tag + '.' + extension
         os.system(cmd)
     except IOError as e:
-        logging.info("Unable to copy file. %s" % e)
+        logging.error("Unable to copy file. %s" % e)
     except:
-        logging.info("Unexpected error:", sys.exc_info())
+        logging.error("Unexpected error:", sys.exc_info())
 
 
 def action(on_off):
@@ -283,7 +283,17 @@ def check_continuously(verbose=False):
 
             # logging.info('Processing image %s', last_image)
 
-            response, eyes_open, tag = check(last_image, client, show=True)
+            # ADIRX: Refactor, extract loop in another method, try over the whole loop
+            try:
+                response, eyes_open, tag = check(last_image, client, show=True)
+            except botocore.exceptions.EndpointConnectionError as e:
+                logging.error("%s" % e)
+                time.sleep(MINS_TO_SLEEP * 60)
+                continue
+            except:
+                logging.info("Unexpected error:", sys.exc_info())
+                time.sleep(MINS_TO_SLEEP * 60)
+                continue
 
             if eyes_open is True:
                 action(ON)
