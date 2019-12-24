@@ -1,4 +1,6 @@
 #!/bin/bash
 
-sudo pkill raspistill
-sudo pkill tl_start.py
+sudo pkill -9 -f -c raspistill
+sudo pkill -9 -f -c tl_start.py
+#sudo pkill -9 -f -c tlstarttmp
+#sudo pkill -9 -f -c tlstart

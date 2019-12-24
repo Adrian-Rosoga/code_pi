@@ -2,13 +2,19 @@
 
 """
 Timelapse Starter - meant to be invoked from cron
-Adrian Rosoga, 6 Feb 2014, refactored 29 Sep 2018
+Adrian Rosoga, 6 Feb 2014
+Refactored 29 Sep 2018
+Refactored Dec 2019
 """
 
-from datetime import datetime
+
 import sys
 import os
 import time
+import logging
+import traceback
+import argparse
+from datetime import datetime
 import subprocess as sp
 import RPi.GPIO as GPIO
 
@@ -35,7 +41,7 @@ To fit the player perfectly, encode at these resolutions:
 CONFIG_DIMENSIONS = '-w 2560 -h 1440'    # YouTube 16:9
 
 #CONFIG_TIME_LIMIT = '-t 86400000'  # 24 hours
-#CONFIG_TIME_LIMIT = '-t 0'          # No limit
+#CONFIG_TIME_LIMIT = '-t 0'         # No limit
 CONFIG_TIME_LIMIT = '-t 100000'  # 10 photos at one photo every 10 secs
 
 #CONFIG_DATE_IN_NAME = ''           # No
@@ -45,12 +51,10 @@ TIMELAPSE_CODE_PATH = '/home/pi/code_pi/timelapse'
 
 
 def get_capture_dir():
-    """ Create sub-directory where pictures go """
+    """Return (create if not exists) the directory where pictures go"""
 
     timelapse_dir = sp.check_output(['readlink', 'timelapse_dir']).rstrip().decode('utf-8')
-    print('timelapse_dir =', timelapse_dir)
-
-    capture_dir = timelapse_dir
+    logging.info(f'timelapse_dir = {timelapse_dir}')
 
     if timelapse_dir != '/tmp/timelapse':
         # Use a different directory every time
@@ -60,17 +64,18 @@ def get_capture_dir():
     else:
         capture_dir = os.path.join(timelapse_dir, "2019")
 
+    # If already there just return it
     if os.path.isdir(capture_dir):
         return capture_dir
 
     return_code = sp.call(['mkdir', capture_dir])
     if return_code:
-        print('Error: Cannot create the capture directory', capture_dir)
+        logging.error(f'Cannot create the capture directory "{capture_dir}"')
         sys.exit(1)
 
     return_code = sp.call(['chmod', 'ago+rw', capture_dir])
     if return_code:
-        print('Error: Cannot chmod for directory', capture_dir)
+        logging.error(f'Cannot chmod for directory "{capture_dir}"')
         sys.exit(1)
 
     return capture_dir
@@ -78,12 +83,10 @@ def get_capture_dir():
 
 def start_capture(capture_dir, run_in_background=True):
 
-    print('Capture directory:', capture_dir)
-    
-    ampersand = ''
-    if run_in_background:
-        ampersand = '&'
-    
+    logging.info(f'Capture directory: "{capture_dir}"')
+
+    ampersand = '&' if run_in_background else ''
+
     # E.g.: raspistill -n -q 100 -o /mnt/timelapse/20160113-093350/z%05d.jpg
     # -t 86400000 -w 1440 -h 1080  -tl 10000 &
     #
@@ -95,27 +98,37 @@ def start_capture(capture_dir, run_in_background=True):
           + ' ' + CONFIG_DATE_IN_NAME\
           + ' ' + '-tl ' + str(TIMELAPSE_SECS_BETWEEN_PICTURES * 1000)\
           + ' ' + ampersand
-    
+
     # Stop LED
     GPIO.output(CAMLED, False)
-    
-    print(datetime.now().strftime("%H:%M:%S"), cmd)
+
+    logging.info(cmd)
     ret_code = os.system(cmd)
     if ret_code:
-        #print 'Error starting capture! Exiting.'
+        #logging.info('Error starting capture! Exiting.')
         #sys.exit(1)
         pass
     else:
-        print(datetime.now().strftime("%H:%M:%S"), 'Capture started!')
+        logging.info('Capture started!')
         #time.sleep(2)
         #GPIO.output(CAMLED, False)
 
 
 def stop_capture():
-    """ Stop capture """
 
     sp.call(['pkill', 'raspistill'])
-    print('Capture stopped!')
+    logging.info('Capture stopped!')
+
+
+def safe_remove(filepath):
+
+    try:
+        os.remove(filepath)
+    except FileNotFoundError:
+        logging.warn(f'File to remove not found: "{filepath}"')
+    except Exception as ex:
+        logging.error('Caught exception: %s', ex.__class__.__name__)
+        traceback.print_exc()
 
 
 def cleanup_dir(timelapse_dir):
@@ -127,12 +140,12 @@ def cleanup_dir(timelapse_dir):
 
         count = 0
         while number_files > FILES_TO_KEEP:
-            #print 'Delete', timelapse_dir + '/' + files[count]
-            os.remove(timelapse_dir + '/' + files[count])
+            #logging.info('Delete', timelapse_dir + '/' + files[count])
+            safe_remove(timelapse_dir + '/' + files[count])
             count += 1
             number_files -= 1
 
-        time.sleep(30)        
+        time.sleep(30)
 
 
 def watchdog():
@@ -156,9 +169,9 @@ def run_default():
 
     # If entered with an argument only keep the last files
     if len(sys.argv) > 1:
-        print("Running cleanup...")
+        logging.info("Running cleanup...")
         cleanup_dir(capture_dir)
-    
+
 
 def run_loop():
 
@@ -173,18 +186,26 @@ def run_loop():
     CONFIG_TIME_LIMIT = '-t 100000'  # 10 photos at one photo every 10 secs
 
     while True:
-   
+
         #start_capture(capture_dir, False)
         #time.sleep(TIMELAPSE_SECS_BETWEEN_PICTURES - 2)
 
         start_capture(capture_dir, True)
-        print(datetime.now().strftime("%H:%M:%S"), "Sleeping...")
+        logging.info("Sleeping...")
         time.sleep(100 + 10)
-        print(datetime.now().strftime("%H:%M:%S"), "Killing...")
+        logging.info("Killing...")
         stop_capture()
 
 
 def main():
+
+    logging.basicConfig(format="%(asctime)-15s %(message)s",
+                        datefmt='%Y-%m-%d %H:%M:%S',
+                        level=logging.INFO)
+
+    parser = argparse.ArgumentParser(description='Timelapse Start')
+    parser.add_argument('tmp', help='Capture in /tmp/timelapse')
+    args = parser.parse_args()
 
     os.chdir(TIMELAPSE_CODE_PATH)
 
@@ -194,7 +215,7 @@ def main():
 
     # Use GPIO numbering
     GPIO.setmode(GPIO.BCM)
-     
+
     # Set GPIO to output
     GPIO.setup(CAMLED, GPIO.OUT, initial=False)
 

@@ -1,8 +1,9 @@
 #!/bin/bash
 
+tlstop
+
 sudo mkdir -p /tmp/timelapse
 
 sudo rm -rf /tmp/timelapse/*
 
 sudo /home/pi/code_pi/timelapse/tl_start.py tmp
-
