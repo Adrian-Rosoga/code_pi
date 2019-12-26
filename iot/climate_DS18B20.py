@@ -9,31 +9,17 @@ import traceback
 import argparse
 from datetime import datetime
 from Adafruit_IO import Client, Feed, errors
+sys.path.append('/home/pi/code_pi/utilpy')
+import DS18B20  # noqa
 
 
 REPORTING_INTERVAL_SECS_DEFAULT = 60  # In-between sensor readings, in seconds.
 ADAFRUIT_IO_KEY = os.environ['ADAFRUIT_IO_KEY']
 ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
 
-DS18B20_OUTPUT_FILE = '/sys/bus/w1/devices/28-0000045bf342/w1_slave'
-
 
 class Registry():
     reporting_interval = REPORTING_INTERVAL_SECS_DEFAULT
-
-
-regex = re.compile(r't=(\d+)')
-
-
-def get_temperature():
-
-    file = open(DS18B20_OUTPUT_FILE, 'r')
-    file.readline()
-    line = file.readline()
-    file.close()
-    data = regex.search(line)
-    temperature = float(data.group(1)[0:4]) / 100.0
-    return temperature
 
 
 def send_readings(aio, temperature, *feeds):
@@ -62,7 +48,7 @@ def main():
     if args.interval:
         Registry.reporting_interval = int(args.interval)
     display_only = args.display_only
-
+    
     # REST client.
     aio = Client(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
 
@@ -73,7 +59,7 @@ def main():
     while True:
 
         try:
-            temperature = get_temperature()
+            temperature = DS18B20.get_temperature()
 
             if temperature is not None:
                 logging.info('Temp={0:0.1f}*C Send readings={1}'.format(temperature, not display_only))
@@ -83,8 +69,8 @@ def main():
             if not display_only:
                 send_readings(aio, temperature, temperature_feed, last_updated_feed)
 
-        except Adafruit_IO.errors.ThrottlingError as ex:
-            logging.info('Throttling occured - Caught exception: %s', ex.__class__.__name__)
+        #except Adafruit_IO.errors.ThrottlingError as ex:
+        #    logging.info('Throttling occured - Caught exception: %s', ex.__class__.__name__)
         except Exception as ex:
             logging.info('Caught exception: %s', ex.__class__.__name__)
             traceback.print_exc()
