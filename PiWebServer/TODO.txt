@@ -1,0 +1,15 @@
+- CSS
+https://stackabuse.com/serving-static-files-with-flask/
+
+- Setup Google Analytics
+
+- Performance testing with Gunicorn and uWSGI
+
+- Performance testing on Lenolin and Pi
+
+- Run from Lenolin
+
+- Use nginx on Lenolin or Pi
+
+- Flask documentation
+https://flask.palletsprojects.com/en/1.1.x/

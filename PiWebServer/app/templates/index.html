@@ -14,7 +14,12 @@
 <body>
 
 <div class="container">
-    <img src="{{image}}" style="width: 100%" alt="out_of_hours.jpg" widthx="420" heighxt="420">
+    <!--
+   style="width: 100%" - ok on desktop but too small on mobile
+   style="height: 100%" - desktop image is zoomed in and does not fills the height!?
+   style="width: 100%; height: 100%" - best so far, on mobile small as dimension same as width but can be zoomed in
+    -->
+    <img src="{{image}}" style="width: 100%; height: 100%" alt="out_of_hours.jpg" widthx="420" heighxt="420">
     <div class="top-left">{{info}}</div>
 </div>
 
