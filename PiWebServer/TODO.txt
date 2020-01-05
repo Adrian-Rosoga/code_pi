@@ -1,3 +1,7 @@
+- Try uvicorn
+
+https://florimond.dev/blog/articles/2019/08/introduction-to-asgi-async-python-web/
+
 - CSS
 https://stackabuse.com/serving-static-files-with-flask/
 
