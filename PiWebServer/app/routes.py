@@ -27,15 +27,15 @@ class Registry(object):
 def get_climate():
     temperature, humidity = HTU21D.get_temperature_humidity()
     if temperature is None or humidity is None:
-        return "N/A"
+        return ""
     else:
-        return "{0:0.1f}C - {1:0.1f}%H".format(temperature, humidity)
+        return f"{temperature:0.1f}C - {humidity:0.1f}%H"
 
 
 def get_picture_filename():
     # Filter for directory names starting with '201'
     try:
-        last_dir_name = max([directory for directory in os.listdir('.') if directory.find('2019') != -1])
+        last_dir_name = max([directory for directory in os.listdir('.') if directory.find('202') != -1])
         if last_dir_name is None:
             app.logger.info('WARNING: last_dir_name == None')
             return None
@@ -95,11 +95,14 @@ def index():
         image = "".join(["/static/", image])
     else:
         last_modified_date = time.ctime(os.path.getmtime(image))
-        info = last_modified_date + ' --- ' + str(get_climate())
+        info = last_modified_date
+        climate = get_climate()
+        if climate != "":
+            info += ' --- ' + climate
         image = "".join(["/static/timelapse/", image])
 
     request_count = request_count + 1
 
-    print(datetime.datetime.now(), "-", os.getpid(), "-", os.path.basename(image), "-",  request_count)    
+    print(datetime.datetime.now(), "-", os.getpid(), "-", os.path.basename(image), "-", request_count)
 
     return render_template('index.html', image=image, info=info, title=Registry.title, refresh=Registry.refresh)
