@@ -62,7 +62,7 @@ def get_capture_dir():
         # Use the same directory
         capture_dir = os.path.join(timelapse_dir, datetime.now().strftime("%Y%m%d"))
     else:
-        capture_dir = os.path.join(timelapse_dir, "2019")
+        capture_dir = os.path.join(timelapse_dir, "")
 
     # If already there just return it
     if os.path.isdir(capture_dir):
