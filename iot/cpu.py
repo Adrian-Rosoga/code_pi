@@ -11,7 +11,6 @@ from Adafruit_IO import RequestError, Client, Feed
 
 ADAFRUIT_IO_KEY = os.environ['ADAFRUIT_IO_KEY']
 ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
-
 REPORTING_INTERVAL_DEFAULT_SECS = 10
 
 
@@ -41,11 +40,11 @@ def report_cpu(aio, feed_name, reporting_interval):
     while True:
         try:
             utilisation = next(cpu_utilisation_generator)
-            logging.info('Feed=' + feed_name + ' CPU={utilisation:.1f}%'.format(utilisation=utilisation))
-            aio.send(feed.key, utilisation)
+            logging.info(f'Feed={feed_name} CPU={utilisation:.2f}%')
+            aio.send(feed.key, f'{utilisation:.2f}')
 
         except Exception as e:
-            logging.info('Caught exception: %s', e.__class__.__name__)
+            logging.info(f'Caught exception: {e.__class__.__name__}')
             traceback.print_exc()
 
         time.sleep(reporting_interval)
@@ -67,7 +66,7 @@ def main():
 
     hostname = platform.node().lower()
     feed_name = "cpu-" + hostname
-    
+
     report_cpu(aio, feed_name, reporting_interval)
 
 
