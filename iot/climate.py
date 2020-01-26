@@ -4,7 +4,6 @@ import os
 import sys
 import time
 import logging
-import traceback
 import argparse
 from datetime import datetime
 from Adafruit_IO import Client, Feed, errors
@@ -12,7 +11,7 @@ sys.path.append('/home/pi/code_pi/utilpy')
 import HTU21D  # noqa
 
 
-REPORTING_INTERVAL_SECS_DEFAULT = 60  # In-between sensor readings, in seconds.
+REPORTING_INTERVAL_SECS_DEFAULT = 60
 ADAFRUIT_IO_KEY = os.environ['ADAFRUIT_IO_KEY']
 ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
 
@@ -26,13 +25,11 @@ def send_readings(aio, temperature, humidity, *feeds):
     temperature_feed, humidity_feed, last_updated_feed = feeds
 
     if humidity is not None and temperature is not None:
-        temperature = '%.2f' % temperature
-        humidity = '%.2f' % humidity
+        temperature = f'temperature:.2f'
+        humidity = f'humidity:.2f'
         aio.send(temperature_feed.key, temperature)
         aio.send(humidity_feed.key, humidity)
         aio.send(last_updated_feed.key, str(datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
-    else:
-        logging.info('Failed to get readings, trying again in {} seconds'.format(Registry.reporting_interval))
 
 
 def main():
@@ -49,7 +46,7 @@ def main():
     if args.interval:
         Registry.reporting_interval = int(args.interval)
     display_only = args.display_only
-    
+
     # REST client.
     aio = Client(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
 
@@ -64,18 +61,15 @@ def main():
             temperature, humidity = HTU21D.get_temperature_humidity()
 
             if humidity is not None and temperature is not None:
-                logging.info('Temp={0:0.1f}*C Humidity={1:0.1f}% Send readings={2}'.format(temperature, humidity, not display_only))
+                logging.info(f'Temp={temperature:0.1f}*C Humidity={humidity:0.1f}% Send={not display_only}')
             else:
-                logging.info('Failed to get readings, trying again in {} seconds'.format(Registry.reporting_interval))
+                logging.info(f'Failed to get readings, trying again in {Registry.reporting_interval} seconds')
 
             if not display_only:
                 send_readings(aio, temperature, humidity, temperature_feed, humidity_feed, last_updated_feed)
 
-        #except Adafruit_IO.errors.ThrottlingError as ex:
-        #    logging.info('Throttling occured - Caught exception: %s', ex.__class__.__name__)
         except Exception as ex:
-            logging.info('Caught exception: %s', ex.__class__.__name__)
-            traceback.print_exc()
+            logging.exception('Cannot send report')
 
         # Avoid flooding Adafruit IO
         time.sleep(Registry.reporting_interval)
