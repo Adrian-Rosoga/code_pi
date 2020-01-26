@@ -3,7 +3,6 @@
 import os
 import time
 import logging
-import traceback
 import argparse
 import platform
 from Adafruit_IO import RequestError, Client, Feed
@@ -11,7 +10,7 @@ from Adafruit_IO import RequestError, Client, Feed
 
 ADAFRUIT_IO_KEY = os.environ['ADAFRUIT_IO_KEY']
 ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
-REPORTING_INTERVAL_DEFAULT_SECS = 10
+REPORTING_INTERVAL_DEFAULT_SECS = 60
 
 
 def cpu_utilisation():
@@ -40,12 +39,11 @@ def report_cpu(aio, feed_name, reporting_interval):
     while True:
         try:
             utilisation = next(cpu_utilisation_generator)
-            logging.info(f'Feed={feed_name} CPU={utilisation:.2f}%')
+            logging.info(f'Feed={feed_name} CPU={utilisation:.2f}% (next in {reporting_interval} secs)')
             aio.send(feed.key, f'{utilisation:.2f}')
 
         except Exception as e:
-            logging.info(f'Caught exception: {e.__class__.__name__}')
-            traceback.print_exc()
+            logging.exception('Cannot send report')
 
         time.sleep(reporting_interval)
 
