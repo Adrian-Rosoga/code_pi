@@ -24,12 +24,9 @@ def send_readings(aio, temperature, humidity, *feeds):
 
     temperature_feed, humidity_feed, last_updated_feed = feeds
 
-    if humidity is not None and temperature is not None:
-        temperature = f'temperature:.2f'
-        humidity = f'humidity:.2f'
-        aio.send(temperature_feed.key, temperature)
-        aio.send(humidity_feed.key, humidity)
-        aio.send(last_updated_feed.key, str(datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
+    aio.send(temperature_feed.key, temperature)
+    aio.send(humidity_feed.key, humidity)
+    aio.send(last_updated_feed.key, str(datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
 
 
 def main():
@@ -60,16 +57,19 @@ def main():
         try:
             temperature, humidity = HTU21D.get_temperature_humidity()
 
+            temperature = f'{temperature:.1f}'
+            humidity = f'{humidity:.1f}'
+
             if humidity is not None and temperature is not None:
-                logging.info(f'Temp={temperature:0.1f}*C Humidity={humidity:0.1f}% Send={not display_only}')
+                if not display_only:
+                    send_readings(aio, temperature, humidity, temperature_feed, humidity_feed, last_updated_feed)
+                logging.info(f'Temp={temperature}*C Humidity={humidity}% Send={not display_only}'
+                             f' (next in {Registry.reporting_interval} secs)')
             else:
                 logging.info(f'Failed to get readings, trying again in {Registry.reporting_interval} seconds')
 
-            if not display_only:
-                send_readings(aio, temperature, humidity, temperature_feed, humidity_feed, last_updated_feed)
-
         except Exception as ex:
-            logging.exception('Cannot send report')
+            logging.exception('Cannot send data')
 
         # Avoid flooding Adafruit IO
         time.sleep(Registry.reporting_interval)
