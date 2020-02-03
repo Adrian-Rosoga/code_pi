@@ -13,6 +13,6 @@ sudo systemctl status pi_ws.service
 
 echo "All seems ok, enabling the service now..."
 
-sudo systemctl enable tl_ws.service
+sudo systemctl enable pi_ws.service
 
 echo "Done!"
