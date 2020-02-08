@@ -13,7 +13,7 @@ ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
 REPORTING_INTERVAL_DEFAULT_SECS = 60
 
 
-def cpu_utilisation():
+def cpu_utilisation() -> float:
     """ Get CPU utilisation """
 
     last_idle = last_total = 0.0
@@ -29,7 +29,7 @@ def cpu_utilisation():
         yield utilisation
 
 
-def report_cpu(aio, feed_name, reporting_interval):
+def report_cpu(aio, feed_name, reporting_interval) -> None:
     """ Report CPU on feed """
 
     feed = aio.feeds(feed_name)  # Feed should exist

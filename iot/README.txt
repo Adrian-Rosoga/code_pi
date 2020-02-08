@@ -1,7 +1,6 @@
-
 Dependencies:
 
-pip3 install adafruit-io --user
+pip3 install adafruit-io portalocker --user
 
 # Obsolete, use portalocker instead
 pip3 install ilock --user

@@ -1,4 +1,4 @@
-pip3 install --user -r requirements.txt 
+pip3 install --user -r requirements.txt
 ...
   The script gunicorn is installed in '/home/pi/.local/bin' which is not on PATH.
   Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
