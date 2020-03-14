@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
+""" Reports CPU usage at regular intervals to Adafruit IO """
+
 import os
 import time
 import logging
 import argparse
 import platform
-from Adafruit_IO import RequestError, Client, Feed
+from Adafruit_IO import Client
 
 
 ADAFRUIT_IO_KEY = os.environ['ADAFRUIT_IO_KEY']
@@ -20,8 +22,8 @@ def cpu_utilisation() -> float:
     idle_delta = total_delta = 0.0
 
     while True:
-        with open('/proc/stat') as f:
-            fields = [float(column) for column in f.readline().strip().split()[1:]]
+        with open('/proc/stat') as file_handle:
+            fields = [float(column) for column in file_handle.readline().strip().split()[1:]]
         idle, total = fields[3], sum(fields)
         idle_delta, total_delta = idle - last_idle, total - last_total
         last_idle, last_total = idle, total
@@ -42,13 +44,14 @@ def report_cpu(aio, feed_name, reporting_interval) -> None:
             logging.info(f'Feed={feed_name} CPU={utilisation:.2f}% (next in {reporting_interval} secs)')
             aio.send(feed.key, f'{utilisation:.2f}')
 
-        except Exception as e:
+        except Exception:
             logging.exception('Cannot send report')
 
         time.sleep(reporting_interval)
 
 
 def main():
+    """ main """
 
     logging.basicConfig(format="%(asctime)-15s %(message)s",
                         datefmt='%Y-%m-%d %H:%M:%S',
