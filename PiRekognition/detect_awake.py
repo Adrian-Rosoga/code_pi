@@ -4,7 +4,7 @@
 # Adrian Rosoga, 18 Sep 2019
 #
 
-from __future__ import print_function
+
 import boto3
 import sys
 import time
@@ -29,7 +29,7 @@ MIN_HOUR, MAX_HOUR = 5, 6
 def get_exif(pil_image):
     exif_info = {}
     info = pil_image._getexif()
-    for tag, value in info.items():
+    for tag, value in list(info.items()):
         decoded = TAGS.get(tag, tag)
         exif_info[decoded] = value
     return exif_info
@@ -121,18 +121,22 @@ def show_faces(response, stream, image_file, tag):
 
 
 def get_image_filename():
-    # Filter for directory names starting with '201'
-    try:
-        last_dir_name = max(filter(lambda dir: dir.find('2019') != -1, os.listdir('.')))
-        if last_dir_name is None:
-            logging.info('No directory ending in 2019')
+
+    if False:
+        # Filter for directory names starting with '201'
+        try:
+            last_dir_name = max([dir for dir in os.listdir('.') if dir.find('2020') != -1])
+            if last_dir_name is None:
+                logging.info('No directory ending in 2019')
+                return None
+            if len(last_dir_name) == 0:
+                logging.info('No directory ending in 2019')
+                return None
+        except:
+            logging.info('exception thrown - no directory starting with 201')
             return None
-        if len(last_dir_name) == 0:
-            logging.info('No directory ending in 2019')
-            return None
-    except:
-        logging.info('exception thrown - no directory starting with 201')
-        return None
+    else:
+        last_dir_name = '.'
 
     last_dir_path = os.path.join('.', last_dir_name)
     if not os.path.isdir(last_dir_path):
