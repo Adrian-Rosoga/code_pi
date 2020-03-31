@@ -24,12 +24,11 @@ class Registry():
 
 def send_readings(aio, temperature, *feeds):
 
-    temperature_feed, last_updated_feed = feeds
+    temperature_feed, = feeds
 
     if temperature is not None:
         temperature = '%.2f' % temperature
         aio.send(temperature_feed.key, temperature)
-        aio.send(last_updated_feed.key, str(datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
     else:
         logging.info('Failed to get readings, trying again in {} seconds'.format(Registry.reporting_interval))
 
@@ -48,13 +47,12 @@ def main():
     if args.interval:
         Registry.reporting_interval = int(args.interval)
     display_only = args.display_only
-    
+
     # REST client.
     aio = Client(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
 
     # Adafruit IO Feeds.
     temperature_feed = aio.feeds('room-temperature')
-    last_updated_feed = aio.feeds('room-last-updated')
 
     while True:
 
@@ -67,7 +65,7 @@ def main():
                 logging.info('Failed to get readings, trying again in {} seconds'.format(Registry.reporting_interval))
 
             if not display_only:
-                send_readings(aio, temperature, temperature_feed, last_updated_feed)
+                send_readings(aio, temperature, temperature_feed)
 
         #except Adafruit_IO.errors.ThrottlingError as ex:
         #    logging.info('Throttling occured - Caught exception: %s', ex.__class__.__name__)
