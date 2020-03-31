@@ -1,0 +1,11 @@
+# On all pis
+sudo systemctl status cpu.service
+
+# Only on Pi3
+sudo systemctl status climate.service
+
+# On pi3, pi-tl, pi-other
+sudo systemctl status pi_ws.service
+
+# Only on pi-other
+sudo systemctl status energenie_webserver.service
