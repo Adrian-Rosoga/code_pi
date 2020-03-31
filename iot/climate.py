@@ -22,11 +22,10 @@ class Registry():
 
 def send_readings(aio, temperature, humidity, *feeds):
 
-    temperature_feed, humidity_feed, last_updated_feed = feeds
+    temperature_feed, humidity_feed = feeds
 
     aio.send(temperature_feed.key, temperature)
     aio.send(humidity_feed.key, humidity)
-    aio.send(last_updated_feed.key, str(datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
 
 
 def main():
@@ -50,7 +49,6 @@ def main():
     # Adafruit IO Feeds.
     temperature_feed = aio.feeds('rafi-temperature')
     humidity_feed = aio.feeds('rafi-humidity')
-    last_updated_feed = aio.feeds('rafi-last-updated')
 
     while True:
 
@@ -62,7 +60,7 @@ def main():
 
             if humidity is not None and temperature is not None:
                 if not display_only:
-                    send_readings(aio, temperature, humidity, temperature_feed, humidity_feed, last_updated_feed)
+                    send_readings(aio, temperature, humidity, temperature_feed, humidity_feed)
                 logging.info(f'Temp={temperature}*C Humidity={humidity}% Send={not display_only}'
                              f' (next in {Registry.reporting_interval} secs)')
             else:
