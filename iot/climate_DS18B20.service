@@ -1,0 +1,15 @@
+[Unit]
+Description=Climate DS18B20 Service
+After=network.target
+
+[Service]
+ExecStart=/home/pi/code_pi/iot/climate_DS18B20.sh
+WorkingDirectory=/home/pi/code_pi/iot
+StandardOutput=inherit
+StandardError=inherit
+#Restart=always
+Restart=no
+User=pi
+
+[Install]
+WantedBy=multi-user.target
