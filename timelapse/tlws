@@ -2,4 +2,4 @@
 
 cd /home/pi/code_pi/timelapse
 
-/home/pi/code_pi/timelapse/tl_ws.py
+python3 /home/pi/code_pi/timelapse/tl_ws.py

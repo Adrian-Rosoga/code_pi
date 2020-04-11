@@ -92,7 +92,7 @@ def start_capture(capture_dir, run_in_background=True):
     #
     # TODO: ' -t ' + str(TIMELAPSE_RUN_HOURS * 3600 * 1000) + \
     #
-    cmd = 'raspistill -n -q 100 -o ' + capture_dir + '/tl_%05d.jpg'\
+    cmd = 'sudo raspistill -n -q 100 -o ' + capture_dir + '/tl_%05d.jpg'\
           + ' ' + CONFIG_TIME_LIMIT\
           + ' ' + CONFIG_DIMENSIONS\
           + ' ' + CONFIG_DATE_IN_NAME\

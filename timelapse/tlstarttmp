@@ -6,4 +6,4 @@ sudo mkdir -p /tmp/timelapse
 
 sudo rm -rf /tmp/timelapse/*
 
-sudo /home/pi/code_pi/timelapse/tl_start.py tmp
+sudo python3 /home/pi/code_pi/timelapse/tl_start.py tmp
