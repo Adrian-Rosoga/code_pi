@@ -12,14 +12,13 @@ from Adafruit_IO import RequestError, Client, Feed
 ADAFRUIT_IO_KEY = os.environ['ADAFRUIT_IO_KEY']
 ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
 
-REPORTING_INTERVAL_DEFAULT_SECS = 10
+REPORTING_INTERVAL_DEFAULT_SECS = 60
 
 
 def cpu_utilisation():
     """ Get CPU utilisation """
 
     last_idle = last_total = 0.0
-    idle_delta = total_delta = 0.0
 
     while True:
         with open('/proc/stat') as f:
