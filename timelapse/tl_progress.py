@@ -1,44 +1,58 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 """
-tlp - Time-lapse Progress
+tlp - Timelapse Progress
 Adrian Rosoga, 13 Jan 2014, refactored 29 Sep 2018
 """
 
+import os
 import subprocess as sp
 from time import sleep
-import sys
-import os
-
-TIMELAPSE_CODE_PATH='/home/pi/code_pi/timelapse'
-os.chdir(TIMELAPSE_CODE_PATH)
 
 
-def run_cmd(cmd):
-        p = sp.Popen(cmd, shell=True, stdout=sp.PIPE)
-        output = p.communicate()[0]
-        return output
+TIMELAPSE_CODE_PATH = '/home/pi/code_pi/timelapse'
 
 
-timelapse_dir = sp.check_output(['readlink', 'timelapse_dir']).rstrip()
+def output_cmd(cmd):
+    """Return the output of a command"""
+    return sp.check_output(cmd, shell=True).rstrip().decode()
 
-old_count = -1
+def check():
+    """Check timelapse progress"""
 
-print '\nDestination: ' + timelapse_dir
+    os.chdir(TIMELAPSE_CODE_PATH)
 
-while True:
-    print '\n---------------------------------'
-    last_dir = run_cmd('ls -1rt ' + timelapse_dir + ' | tail -1')[:-1]
-    print 'Directory: ' + last_dir
-    new_count = run_cmd('ls ' + timelapse_dir + '/' + last_dir + ' | wc -l')[:-1]
-    print str(new_count) + ' photos'
-    os.system('date')
-    os.system('ps -eaf | grep raspistill | grep -v grep')
+    timelapse_dir = output_cmd('readlink timelapse_dir')
 
-    if new_count == old_count:
-        print '!!!!!!! ALERT !!!!!!!'
-    old_count = new_count
+    old_count_photos = -1
 
-    os.system('df -h ' + timelapse_dir + '/' + last_dir)
+    print('\nPhotos dir: ' + timelapse_dir)
 
-    sleep(30) 
+    while True:
+        print('\n---------------------------------')
+
+        if timelapse_dir != '/tmp/timelapse':
+            last_dir = output_cmd(f'ls -1rt {timelapse_dir} | tail -1')
+        else:
+            last_dir = "."
+
+        photos_dir = os.path.join(timelapse_dir, last_dir)
+        print(f'Photos directory: {photos_dir}')
+
+        count_photos = output_cmd(f'ls {photos_dir} | wc -l')
+
+        print(f'{count_photos} photos')
+        os.system('date')
+        os.system('ps -eaf | grep raspistill | grep -v grep | grep -v sudo')
+
+        if count_photos == old_count_photos:
+            print('!!!!!!! ALERT !!!!!!!')
+        old_count_photos = count_photos
+
+        os.system(f'df -h {photos_dir}')
+
+        sleep(30)
+
+
+if __name__ == "__main__":
+    check()

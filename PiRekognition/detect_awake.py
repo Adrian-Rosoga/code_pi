@@ -4,18 +4,18 @@
 # Adrian Rosoga, 18 Sep 2019
 #
 
-from __future__ import print_function
-import boto3
+
 import sys
 import time
 import os
 import pprint
 import unittest
-import io
 import logging
 import argparse
-from PIL import Image, ImageDraw, ExifTags, ImageColor, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 from PIL.ExifTags import TAGS
+import boto3
+
 
 MINS_TO_SLEEP = 5
 CONFIDENCE_THRESHOLD = 90.0
@@ -27,19 +27,24 @@ MIN_HOUR, MAX_HOUR = 5, 6
 
 
 def get_exif(pil_image):
+    """ Return EXIF info as dictionary """
+
     exif_info = {}
     info = pil_image._getexif()
-    for tag, value in info.items():
+    for tag, value in list(info.items()):
         decoded = TAGS.get(tag, tag)
         exif_info[decoded] = value
     return exif_info
 
 
 def to_yes_no(value):
+    """ Translate between worlds """
+
     return 'YES' if value else 'NO'
 
 
 def show_faces(response, stream, image_file, tag):
+    """ Does (too) many things - annotate image, save image """
 
     image = Image.open(stream)
 
@@ -61,11 +66,11 @@ def show_faces(response, stream, image_file, tag):
     draw.text((0, 0), '*** PiRekognition *** ' + date_taken, fill='yellow', font=font)
 
     # Display bounding boxes for each detected face
-    for faceDetail in response['FaceDetails']:
-        # print('The detected face is between ' + str(faceDetail['AgeRange']['Low'])
-        #      + ' and ' + str(faceDetail['AgeRange']['High']) + ' years old')
+    for face_detail in response['FaceDetails']:
+        # print('The detected face is between ' + str(face_detail['AgeRange']['Low'])
+        #      + ' and ' + str(face_detail['AgeRange']['High']) + ' years old')
 
-        box = faceDetail['BoundingBox']
+        box = face_detail['BoundingBox']
         left = image_width * box['Left']
         top = image_height * box['Top']
         width = image_width * box['Width']
@@ -80,10 +85,10 @@ def show_faces(response, stream, image_file, tag):
         )
         draw.line(points, fill='yellow', width=2)
 
-        annotation = 'Face #' + str(index) + ': EyesOpen=' + to_yes_no(faceDetail['EyesOpen']['Value']) + \
-                     ' - EyesOpenConfidence=' + '{:.1f}'.format(faceDetail['EyesOpen']['Confidence']) + '% ' + \
+        annotation = 'Face #' + str(index) + ': EyesOpen=' + to_yes_no(face_detail['EyesOpen']['Value']) + \
+                     ' - EyesOpenConfidence=' + '{:.1f}'.format(face_detail['EyesOpen']['Confidence']) + '% ' + \
                      '(Threshold=' + '{:.1f}'.format(CONFIDENCE_THRESHOLD) + ') - ' +\
-                     'Confidence=' + '{:.1f}'.format(faceDetail['Confidence']) + '%'
+                     'Confidence=' + '{:.1f}'.format(face_detail['Confidence']) + '%'
 
         text_width, text_height = font.getsize(annotation)
         draw.rectangle((0, 40 * index, text_width, 40 * (index + 1)), fill='black')
@@ -109,7 +114,7 @@ def show_faces(response, stream, image_file, tag):
     '''
     # image.show()
 
-    name, extension = os.path.basename(image_file).split('.')
+    _, extension = os.path.basename(image_file).split('.')
 
     # From '2019:10:03 11:24:52' to Dropbox-like format '2019-10-03 11.24.52'
     date_taken = date_taken.replace(':', '-', 2)
@@ -121,18 +126,23 @@ def show_faces(response, stream, image_file, tag):
 
 
 def get_image_filename():
-    # Filter for directory names starting with '201'
-    try:
-        last_dir_name = max(filter(lambda dir: dir.find('2019') != -1, os.listdir('.')))
-        if last_dir_name is None:
-            logging.info('No directory ending in 2019')
+    """ Get the last image saved """
+
+    if False:
+        # Filter for directory names starting with '201'
+        try:
+            last_dir_name = max([dir for dir in os.listdir('.') if dir.find('2020') != -1])
+            if last_dir_name is None:
+                logging.info('No directory ending in 2019')
+                return None
+            if not last_dir_name:
+                logging.info('No directory ending in 2019')
+                return None
+        except:
+            logging.info('exception thrown - no directory starting with 201')
             return None
-        if len(last_dir_name) == 0:
-            logging.info('No directory ending in 2019')
-            return None
-    except:
-        logging.info('exception thrown - no directory starting with 201')
-        return None
+    else:
+        last_dir_name = '.'
 
     last_dir_path = os.path.join('.', last_dir_name)
     if not os.path.isdir(last_dir_path):
@@ -144,7 +154,7 @@ def get_image_filename():
 
     files.sort(key=lambda x: x)
 
-    if len(files) == 0:
+    if not files:
         logging.info('No files in directory')
         return None
 
@@ -163,17 +173,21 @@ def get_image_filename():
 
 
 def copy_file(image_file, tag):
+    """ Copy image after adding a tag to its name """
+
     try:
         name, extension = os.path.basename(image_file).split('.')
         cmd = 'cp ' + image_file + ' ' + IMAGE_DESTINATION_DIR + name + '_' + tag + '.' + extension
         os.system(cmd)
     except IOError as e:
-        logging.info("Unable to copy file. %s" % e)
+        logging.error("Unable to copy file. %s" % e)
     except:
-        logging.info("Unexpected error:", sys.exc_info())
+        logging.error("Unexpected error:", sys.exc_info())
 
 
 def action(on_off):
+    """ Turn on or off the lamp """
+
     if on_off == ON:
         os.system('/home/pi/code_pi/PiRekognition/hs100_lamp_on.sh')
     else:
@@ -181,6 +195,7 @@ def action(on_off):
 
 
 def check(image_file, client, show=False):
+    """ Check image for open eyes """
 
     eyes_open = None
     tag = ''
@@ -203,7 +218,7 @@ def check(image_file, client, show=False):
                 tag = tag + '_' + '{:.1f}'.format(label['EyesOpen']['Confidence']) + '_' +\
                             '{:.1f}'.format(label['Confidence'])
 
-        elif response['FaceDetails'] is not None and len(response['FaceDetails']) > 0:
+        elif response['FaceDetails'] is not None and response['FaceDetails']:
 
             eyes_open, tag = False, 'more_than_one_face'
 
@@ -220,8 +235,11 @@ def check(image_file, client, show=False):
 
 
 class AwakeTest(unittest.TestCase):
+    """ Test """
 
     def test(self):
+        """ Test """
+
         client = boto3.client('rekognition')
 
         response, eyes_open, tag = check('test_eyes_closed_52.7_99.9.jpg', client)
@@ -246,8 +264,11 @@ class AwakeTest(unittest.TestCase):
 
 
 class AwakeTestQuick(unittest.TestCase):
+    """ Quick test """
 
     def test(self):
+        """ Test """
+
         client = boto3.client('rekognition')
 
         response, eyes_open, tag = check('test_no_face_details.jpg', client)
@@ -256,6 +277,7 @@ class AwakeTestQuick(unittest.TestCase):
 
 
 def check_file(image_file, verbose=False):
+    """ Check image """
 
     client = boto3.client('rekognition')
     response, eyes_open, tag = check(image_file, client, show=True)
@@ -267,7 +289,8 @@ def check_file(image_file, verbose=False):
     return 0
 
 
-def check_continuously(verbose=False):
+def check_continuously(verbose=False, force=False):
+    """ Check in a loop """
 
     client = boto3.client('rekognition')
     os.chdir(PHOTO_DIR)
@@ -276,14 +299,24 @@ def check_continuously(verbose=False):
 
         timestamp = time.localtime()
 
-        if args.force or (MIN_HOUR <= timestamp.tm_hour <= MAX_HOUR):
+        if force or (MIN_HOUR <= timestamp.tm_hour <= MAX_HOUR):
 
             last_image = get_image_filename()
             last_image = os.path.join(PHOTO_DIR, last_image)
 
             # logging.info('Processing image %s', last_image)
 
-            response, eyes_open, tag = check(last_image, client, show=True)
+            # ADIRX: Refactor, extract loop in another method, try over the whole loop
+            try:
+                response, eyes_open, tag = check(last_image, client, show=True)
+            except botocore.exceptions.EndpointConnectionError as e:
+                logging.error("%s" % e)
+                time.sleep(MINS_TO_SLEEP * 60)
+                continue
+            except:
+                logging.info("Unexpected error:", sys.exc_info())
+                time.sleep(MINS_TO_SLEEP * 60)
+                continue
 
             if eyes_open is True:
                 action(ON)
@@ -310,7 +343,8 @@ def check_continuously(verbose=False):
         time.sleep(MINS_TO_SLEEP * 60)
 
 
-if __name__ == "__main__":
+def main():
+    """ Main, what else? """
 
     logging.basicConfig(format="%(asctime)-15s %(message)s",
                         datefmt='%Y-%m-%d %H:%M:%S',
@@ -330,4 +364,9 @@ if __name__ == "__main__":
         image_file = args.file
         sys.exit(check_file(image_file, verbose=args.verbose))
     else:
-        check_continuously(verbose=args.verbose)
+        check_continuously(verbose=args.verbose, force=args.force)
+
+
+if __name__ == "__main__":
+
+    main()

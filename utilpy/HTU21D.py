@@ -4,7 +4,11 @@ import struct
 import array
 import time
 import i2c_base
-from ilock import ILock
+import portalocker
+import logging
+import sys
+import traceback
+
 
 HTU21D_ADDR = 0x40
 CMD_READ_TEMP_HOLD = b"\xE3"
@@ -14,6 +18,13 @@ CMD_READ_HUM_NOHOLD = b"\xF5"
 CMD_WRITE_USER_REG = b"\xE6"
 CMD_READ_USER_REG = b"\xE7"
 CMD_SOFT_RESET = b"\xFE"
+
+
+LOCK_FILE = '/tmp/HTU21D-lock'
+
+
+with open(LOCK_FILE, 'w') as f:
+    pass
 
 
 class HTU21D(object):
@@ -88,10 +99,14 @@ class HTU21D(object):
 
 def get_temperature_humidity():
     try:
-        with ILock('HTU21D'):
+        with portalocker.Lock(LOCK_FILE, 'rb+') as fh:
             obj = HTU21D()
             return obj.read_temperature(), obj.read_humidity()
-    except:
+    except OSError:  # No sensor or I2C not enabled
+        return None, None
+    except Exception:
+        logging.error('Caught exception: %s', sys.exc_info()[0])
+        traceback.print_exc()
         return None, None
 
 
@@ -101,5 +116,8 @@ if __name__ == "__main__":
         temperature = "{0:0.1f}".format(obj.read_temperature())
         humidity = "{0:0.1f}".format(obj.read_humidity())
         print(temperature, '&deg;C -', humidity, '%H')
-    except:
-        print('HTU21D N/A!')
+    except OSError:  # No sensor or I2C not enabled
+        logging.error('No sensor installed or I2C not enabled!?')
+    except Exception:
+        logging.error('Caught exception: %s', sys.exc_info()[0])
+        traceback.print_exc()

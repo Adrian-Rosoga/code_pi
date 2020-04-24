@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
+""" Reports CPU usage at regular intervals to Adafruit IO """
+
 import os
 import time
 import logging
-import traceback
 import argparse
 import platform
-from Adafruit_IO import RequestError, Client, Feed
+from Adafruit_IO import Client
 
 
 ADAFRUIT_IO_KEY = os.environ['ADAFRUIT_IO_KEY']
@@ -15,14 +16,14 @@ ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
 REPORTING_INTERVAL_DEFAULT_SECS = 60
 
 
-def cpu_utilisation():
+def cpu_utilisation() -> float:
     """ Get CPU utilisation """
 
     last_idle = last_total = 0.0
 
     while True:
-        with open('/proc/stat') as f:
-            fields = [float(column) for column in f.readline().strip().split()[1:]]
+        with open('/proc/stat') as file_handle:
+            fields = [float(column) for column in file_handle.readline().strip().split()[1:]]
         idle, total = fields[3], sum(fields)
         idle_delta, total_delta = idle - last_idle, total - last_total
         last_idle, last_total = idle, total
@@ -30,7 +31,7 @@ def cpu_utilisation():
         yield utilisation
 
 
-def report_cpu(aio, feed_name, reporting_interval):
+def report_cpu(aio, feed_name, reporting_interval) -> None:
     """ Report CPU on feed """
 
     feed = aio.feeds(feed_name)  # Feed should exist
@@ -40,17 +41,17 @@ def report_cpu(aio, feed_name, reporting_interval):
     while True:
         try:
             utilisation = next(cpu_utilisation_generator)
-            logging.info('Feed=' + feed_name + ' CPU={utilisation:.1f}%'.format(utilisation=utilisation))
-            aio.send(feed.key, utilisation)
+            logging.info(f'Feed={feed_name} CPU={utilisation:.2f}% (next in {reporting_interval} secs)')
+            aio.send(feed.key, f'{utilisation:.2f}')
 
-        except Exception as e:
-            logging.info('Caught exception: %s', e.__class__.__name__)
-            traceback.print_exc()
+        except Exception:
+            logging.exception('Cannot send report')
 
         time.sleep(reporting_interval)
 
 
 def main():
+    """ main """
 
     logging.basicConfig(format="%(asctime)-15s %(message)s",
                         datefmt='%Y-%m-%d %H:%M:%S',
@@ -66,7 +67,7 @@ def main():
 
     hostname = platform.node().lower()
     feed_name = "cpu-" + hostname
-    
+
     report_cpu(aio, feed_name, reporting_interval)
 
 

@@ -5,58 +5,76 @@ Timelapse Destination
 Adrian Rosoga, 19 May 2014, refactored 29 Sep 2018
 """
 
-import subprocess as sp
 import sys
 import os
+import subprocess as sp
+
 
 TIMELAPSE_CODE_PATH = '/home/pi/code_pi/timelapse'
 
 
-MENU = ((1, '/mnt/timelapse/tl',       '/mnt/timelapse/tl'),
-        (2, '/mnt/timelapse/other',    '/mnt/timelapse/other'),
-        (3, '/mnt/timelapse/rafi',     '/mnt/timelapse/rafi'),
-        (4, '/mnt/timelapse/zero',     '/mnt/timelapse/zero'),
-        (5, '/tmp/timelapse',          '/tmp/timelapse'),
-        (6, '/media/usb0/timelapse',   '/media/usb0/timelapse'),
-        (7, '/media/pi/PI_STICK',      '/media/pi/PI_STICK'))
+MENU = ('/mnt/timelapse/tl',
+        '/mnt/timelapse/other',
+        '/mnt/timelapse/rafi',
+        '/mnt/timelapse/zero',
+        '/tmp/timelapse',
+        '/mnt/pi_stick/timelapse')
+
+
+def check_directory_exists(directory):
+    '''Check directory exists'''
+
+    if not os.path.exists(directory):
+        msg = f'WARNING: The directory {directory} does not exist!'
+        print('\n' + '=' * len(msg))
+        print(msg)
+        print('=' * len(msg))
 
 
 def main():
+    """Show and offer option to set the photos directory"""
 
     os.chdir(TIMELAPSE_CODE_PATH)
 
     if os.path.islink('timelapse_dir'):
-        output = sp.check_output(['readlink', 'timelapse_dir'])
-        print('\nCurrent image directory:', output.strip().decode('utf-8'))
+        timelapse_dir = sp.check_output(['readlink', 'timelapse_dir'])
+        timelapse_dir = timelapse_dir.strip().decode('utf-8')
+        print('\nPhotos directory:', timelapse_dir)
+
+        check_directory_exists(timelapse_dir)
+
     else:
-        print('\nCurrent image directory not set')
+        print('\nPhotos directory not set!')
 
-    print('\nChoose image directory:\n')
+    print('\nChoose photos directory or \'x\' to exit:\n')
 
-    for menu_elem in MENU:
-        print(str(menu_elem[0]) + ') ' + menu_elem[1] + ' - ' + menu_elem[2])
+    for index, menu_elem in enumerate(MENU):
+        print(f'{index + 1}) {menu_elem}')
 
     print('x) Exit')
 
     while True:
-        option = input('\nSelect image directory: ')
+        option = input('\nSelect photos directory: ')
         if option == 'x':
             sys.exit(0)
-        if option in ('1', '2', '3', '4', '5', '6', '7'):
+        elif option not in [str(nb + 1) for nb in range(len(MENU))]:
+            print('Wrong option. Try again.')
+        else:
             break
-        print('Wrong option. Try again.')
 
     option = int(option) - 1
 
     sp.check_call(['rm', '-f', 'timelapse_dir'])
 
-    timelapse_name = MENU[option][1]
-    timelapse_dir = MENU[option][2]
+    timelapse_dir = MENU[option]
 
     sp.check_call(['ln', '-s', timelapse_dir, 'timelapse_dir'])
 
-    print('\nImage directory set to ' + timelapse_name + ': ' + timelapse_dir)
+    print(f'\nPhotos directory set to {timelapse_dir}')
+
+    check_directory_exists(timelapse_dir)
 
 
 if __name__ == '__main__':
+
     main()
