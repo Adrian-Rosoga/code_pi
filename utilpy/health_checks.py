@@ -11,6 +11,7 @@ import smtplib
 import ssl
 import threading
 from collections import namedtuple
+from http import HTTPStatus
 
 
 #
@@ -31,29 +32,48 @@ TIMEOUT_SECS = 10
 #URLs = ['http://tides-env.m5xmmhjzmw.eu-west-2.elasticbeanstalk.comX']
 
 
-URLData = namedtuple('URLData', 'code exception_name data_length time_ms')
+URLData = namedtuple('URLData', 'url code ex_type ex_value data_length time_ms')
+
+
+def HTTP_info_from_code(code: int):
+
+    for status in HTTPStatus:
+        if status.value == code:
+            return status.name, status.phrase, status.description
+
+    return (None,) * 3
+
+
+def TimeFn(elem):
+    return float(elem.time_ms)
 
 
 class URLsStatus:
 
     def __init__(self):
-        self.status = dict()
+        self.status = []
         self._lock = threading.Lock()
 
-    def update(self, url, code, exception_name, data_length, time_ms):
+    def update(self, url, code, ex_type, ex_value, data_length, time_ms):
 
         with self._lock:
-            self.status[url] = URLData(code, exception_name, data_length, time_ms)
+            self.status.append(URLData(url, code, ex_type, ex_value, data_length, time_ms))
 
     def values(self):
 
-        for url, data in self.status.items():
-            yield url, data
+        for url_status in self.status:
+            yield url_status
+
+    def values_sorted_by_time(self):
+
+        for url_status in sorted(self.status, key=TimeFn):
+            yield url_status        
 
 
 def check_web_site(url: str, urls_status):
 
-    exception_name = None
+    ex_type = None
+    ex_value = None
 
     ts = time.time()
 
@@ -62,7 +82,8 @@ def check_web_site(url: str, urls_status):
         code = page.status_code
     except requests.exceptions.RequestException as ex:
         code = None
-        exception_name = ex.__class__.__name__
+        ex_type = ex.__class__.__name__
+        ex_type, ex_value, _ = sys.exc_info()
 
     te = time.time()
 
@@ -70,9 +91,7 @@ def check_web_site(url: str, urls_status):
     
     data_length = len(page.text) if code == requests.codes.ok else 0
 
-    urls_status.update(url, code, exception_name, data_length, time_ms)
-
-    return code, data_length
+    urls_status.update(url, code, ex_type, ex_value, data_length, time_ms)
 
 
 def send_email(subject, message):
@@ -116,16 +135,34 @@ def main():
     time_ms = (te - ts) * 1000
 
     status_codes = []
-    messages = []
-    for url, url_data in url_status.values():
+    messages = ["\n"]
 
-        status_code, exception_name, data_length, time_ms = url_data
+    for status in url_status.values():
+
+        url, status_code, ex_type, ex_value, data_length, time_ms = status
 
         if status_code != requests.codes.ok:
             status_codes.append(False)
-            msg = f'{url} DOWN! Code {status_code}. Exception {exception_name}. Took {time_ms:.2f} ms'
+            HTTPName, HTTPPhrase, HTTPDescription = HTTP_info_from_code(status_code)
+            msg = f'{url} DOWN! Code {status_code}. Name \'{HTTPName}\'. Phrase \'{HTTPPhrase}\'. Description \'{HTTPDescription}\'. Ex_type {ex_type}. Ex_value \'{ex_value}\'. Took {time_ms:.2f} ms'
         else:
             status_codes.append(True)
+            msg = f'{url} UP! Code {status_code}. Data length = {data_length}. Took {time_ms:.2f} ms'
+
+        print(msg)
+        messages.append(msg)
+
+    messages.append("\n\nOrdered by time\n")
+
+    # Almost the same but sort by time
+    for status in url_status.values_sorted_by_time():
+
+        url, status_code, ex_type, ex_value, data_length, time_ms = status
+
+        if status_code != requests.codes.ok:
+            HTTPName, HTTPPhrase, HTTPDescription = HTTP_info_from_code(status_code)
+            msg = f'{url} DOWN! Code {status_code}. Name \'{HTTPName}\'. Phrase \'{HTTPPhrase}\'. Description \'{HTTPDescription}\'. Ex_type {ex_type}. Ex_value \'{ex_value}\'. Took {time_ms:.2f} ms'
+        else:
             msg = f'{url} UP! Code {status_code}. Data length = {data_length}. Took {time_ms:.2f} ms'
 
         print(msg)
