@@ -25,10 +25,9 @@ def retry_if_return_is_none(times=1, sleep_secs=1):
                 result = func(*args, **kw)
                 if result is not None:
                     return result
-                else:
-                    time.sleep(sleep_secs)
-                    count -= 1
-                    continue
+                time.sleep(sleep_secs)
+                count -= 1
+                continue
         return wrapped
     return wrapper
 
