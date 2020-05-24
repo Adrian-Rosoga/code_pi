@@ -34,6 +34,12 @@ NUMBER_BACKLOG_CHECKS = 24
 
 URLData = namedtuple('URLData', 'url code ex_type ex_value data_length time_ms')
 
+SPEEDTEST_SERVERS = { "Trunk Networks - London (id = 12920)": 12920,
+                      "Vox Telecom - London (id = 7437)": 7437,
+                      "fdcservers.net - London (id = 6032)": 6032,
+                      "Jump Networks Ltd - London (id = 24640)": 24640,
+                      "GTT.net - London (id = 24383)": 24383
+}
 
 def HTTP_info_from_code(code: int):
 
@@ -156,12 +162,16 @@ def build_message(values, messages=None, status_codes=None):
             messages.append(msg)
 
 
-def speedtest_result():
+def speedtest_result(server_id=None):
 
-    #cmd = "/usr/bin/speedtest --progress=no --unit"
-    cmd = "/usr/bin/speedtest"
+    cmd = "/usr/bin/speedtest --progress=no"
 
-    return cmd_output(cmd)
+    if server_id is not None:
+        cmd = cmd + f" --server-id={server_id}"
+
+    print(f"cmd={cmd}")
+
+    return cmd_output(cmd.split())
 
 
 def main():
@@ -208,8 +218,19 @@ def main():
     current_email_body = "\n".join(messages)
 
     # Add Speedtest result
-    current_email_body += "\n\n" + speedtest_result()
+    print(f"Running Speedtest(s)...")
+    
+    for station_id in [None, 24383, 12920, 7437, 6032]:
 
+        with ManagedTimerSeconds(elapsed_secs):
+            internet_check = speedtest_result(station_id)
+        
+        time_ms = elapsed_secs[0] * 1000
+
+        print(f"Running Speedtest for station {station_id} took {time_ms:.2f} ms, results:\n{internet_check}")
+        current_email_body += "\n\n" + internet_check
+
+    # Send results
     if all(status_codes):
 
         status_store.add(current_email_body)
