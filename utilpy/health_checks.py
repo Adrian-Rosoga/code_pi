@@ -12,6 +12,7 @@ import pickle
 import datetime
 from collections import namedtuple
 from http import HTTPStatus
+from util import cmd_output
 
 
 #
@@ -23,13 +24,13 @@ URLs = ['http://tides-env.m5xmmhjzmw.eu-west-2.elasticbeanstalk.com',
         'https://arosoga.netlify.app',
         'https://arosoga.netlify.com',
         'https://adrian-rosoga.github.io',
-        'https://cb91b3bd.eu.ngrok.io/tl',
-        'https://d2eafeb7.eu.ngrok.io/tl'
+        'https://48124b7a.eu.ngrok.io/tl',
+        'https://2a5bce0a.eu.ngrok.io/tl'
         ]
 
 TIMEOUT_SECS = 30
 STATUS_STORE_FILE = "/home/adi/code_local/health_check_status.dat"
-NUMBER_BACKLOG_CHECKS = 4
+NUMBER_BACKLOG_CHECKS = 24
 
 URLData = namedtuple('URLData', 'url code ex_type ex_value data_length time_ms')
 
@@ -155,6 +156,14 @@ def build_message(values, messages=None, status_codes=None):
             messages.append(msg)
 
 
+def speedtest_result():
+
+    #cmd = "/usr/bin/speedtest --progress=no --unit"
+    cmd = "/usr/bin/speedtest"
+
+    return cmd_output(cmd)
+
+
 def main():
 
     messages = ["\nHealth chech performed at " + str(datetime.datetime.now())]
@@ -198,12 +207,15 @@ def main():
 
     current_email_body = "\n".join(messages)
 
+    # Add Speedtest result
+    current_email_body += "\n\n" + speedtest_result()
+
     if all(status_codes):
 
         status_store.add(current_email_body)
 
         # Send email right away if enough reports in the backlog, else just store the report
-        if len(status_store.statuses) == NUMBER_BACKLOG_CHECKS:
+        if len(status_store.statuses) == NUMBER_BACKLOG_CHECKS or True:
 
             subject = f'WebChecks OK: All {len(status_codes)} sites are UP!'
             print(f'Sending email to inform of {len(status_store.statuses)} successful checks so far...')

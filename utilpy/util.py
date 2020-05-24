@@ -37,3 +37,10 @@ def run_cmd(cmd):
     pipe = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     output = pipe.communicate()[0]
     return output.decode().split('\n')[0]
+
+
+def cmd_output(cmd):
+    """Return the output of a cmd launched on a shell"""
+    pipe = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    output = pipe.communicate()[0]
+    return output.decode()
