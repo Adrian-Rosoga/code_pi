@@ -236,7 +236,7 @@ def main():
         status_store.add(current_email_body)
 
         # Send email right away if enough reports in the backlog, else just store the report
-        if len(status_store.statuses) == NUMBER_BACKLOG_CHECKS or True:
+        if len(status_store.statuses) == NUMBER_BACKLOG_CHECKS:
 
             subject = f'WebChecks OK: All {len(status_codes)} sites are UP!'
             print(f'Sending email to inform of {len(status_store.statuses)} successful checks so far...')
