@@ -13,12 +13,15 @@ import datetime
 from collections import namedtuple
 from http import HTTPStatus
 from util import cmd_output
+from Adafruit_IO import Client
 
 
 #
 # Adrian Rosoga, 18 Apr 2020
 #
 
+ADAFRUIT_IO_KEY = os.environ['ADAFRUIT_IO_KEY']
+ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
 
 URLs = ['http://tides-env.m5xmmhjzmw.eu-west-2.elasticbeanstalk.com',
         'https://arosoga.netlify.app',
@@ -29,7 +32,9 @@ URLs = ['http://tides-env.m5xmmhjzmw.eu-west-2.elasticbeanstalk.com',
         ]
 
 TIMEOUT_SECS = 30
+
 STATUS_STORE_FILE = "/home/adi/code_local/health_check_status.dat"
+
 NUMBER_BACKLOG_CHECKS = 24
 
 URLData = namedtuple('URLData', 'url code ex_type ex_value data_length time_ms')
@@ -40,6 +45,7 @@ SPEEDTEST_SERVERS = { "Trunk Networks - London (id = 12920)": 12920,
                       "Jump Networks Ltd - London (id = 24640)": 24640,
                       "GTT.net - London (id = 24383)": 24383
 }
+
 
 def HTTP_info_from_code(code: int):
 
@@ -174,7 +180,71 @@ def speedtest_result(server_id=None):
     return cmd_output(cmd.split())
 
 
+def report_speedtest(internet_check_report):
+    """ Report internet speed
+    
+    Speedtest by Ookla
+
+        Server: fdcservers.net - London (id = 6032)
+            ISP: Hyperoptic Ltd
+        Latency:    2.33 ms  (0.41 ms jitter)
+
+    Download:    49.26 Mbps (data used: 59.1 MB)                             
+
+        Upload:    68.40 Mbps (data used: 124.5 MB)                             
+    Packet Loss: Not available.
+    Result URL: https://www.speedtest.net/result/c/0ce5c428-677b-4775-add3-2ebc06f25eef    
+    
+    """
+
+    import re
+
+    match = re.search(r'Download:\s+(\d+\.*\d+)\s+Mbps', internet_check_report)
+    download_mbps = float(match.group(1)) if match else None
+
+    match = re.search(r'Upload:\s+(\d+\.*\d+)\s+Mbps', internet_check_report)
+    upload_mbps = float(match.group(1)) if match else None
+
+    print(download_mbps, upload_mbps)
+
+    #return
+    
+    aio = Client(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
+
+    feed_internet_download_name = "internet-download"
+    feed_internet_upload_name = "internet-upload"
+
+    feed_internet_download = aio.feeds(feed_internet_download_name)
+    feed_internet_upload = aio.feeds(feed_internet_upload_name)
+
+    if download_mbps is not None:
+        aio.send(feed_internet_download.key, f'{download_mbps:.2f}')
+    
+    if upload_mbps is not None:
+        aio.send(feed_internet_upload.key, f'{upload_mbps:.2f}')
+
+
+
+report =  """   Speedtest by Ookla
+
+        Server: fdcservers.net - London (id = 6032)
+            ISP: Hyperoptic Ltd
+        Latency:    2.33 ms  (0.41 ms jitter)
+
+    Download:    49.26 Mbps (data used: 59.1 MB)                             
+
+        Upload:    68 Mbps (data used: 124.5 MB)                             
+    Packet Loss: Not available.
+    Result URL: https://www.speedtest.net/result/c/0ce5c428-677b-4775-add3-2ebc06f25eef    
+    
+    """
+
+
+
 def main():
+
+    #report_speedtest(report)
+    #return
 
     messages = ["\nHealth chech performed at " + str(datetime.datetime.now())]
 
@@ -218,17 +288,23 @@ def main():
     current_email_body = "\n".join(messages)
 
     # Add Speedtest result
-    print(f"Running Speedtest(s)...")
+    print("Running Speedtest(s)...")
     
     for station_id in [None, 24383, 12920, 7437, 6032]:
 
         with ManagedTimerSeconds(elapsed_secs):
-            internet_check = speedtest_result(station_id)
+            internet_check_report = speedtest_result(station_id)
         
         time_ms = elapsed_secs[0] * 1000
 
-        print(f"Running Speedtest for station {station_id} took {time_ms:.2f} ms, results:\n{internet_check}")
-        current_email_body += "\n\n" + internet_check
+        print(f"Running Speedtest for station {station_id} took {time_ms:.2f} ms, results:\n{internet_check_report}")
+        current_email_body += "\n\n" + internet_check_report
+
+        # Report the download and upload speeds
+        try:
+            report_speedtest(internet_check_report)
+        except:
+            pass
 
     # Send results
     if all(status_codes):
