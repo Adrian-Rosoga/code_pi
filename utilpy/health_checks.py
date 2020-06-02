@@ -2,6 +2,7 @@
 
 
 import os
+import re
 import sys
 import time
 import requests
@@ -163,7 +164,8 @@ def build_message(values, messages=None, status_codes=None):
                 status_codes.append(True)
             msg = f'{url} UP! Code {status_code}. Data length = {data_length}. Took {time_ms:.2f} ms'
 
-        print(msg)
+        if messages is None:
+            print(msg)
         if messages is not None:
             messages.append(msg)
 
@@ -175,29 +177,13 @@ def speedtest_result(server_id=None):
     if server_id is not None:
         cmd = cmd + f" --server-id={server_id}"
 
-    print(f"cmd={cmd}")
+    #print(f"cmd={cmd}")
 
     return cmd_output(cmd.split())
 
 
 def report_speedtest(internet_check_report):
-    """ Report internet speed
-    
-    Speedtest by Ookla
-
-        Server: fdcservers.net - London (id = 6032)
-            ISP: Hyperoptic Ltd
-        Latency:    2.33 ms  (0.41 ms jitter)
-
-    Download:    49.26 Mbps (data used: 59.1 MB)                             
-
-        Upload:    68.40 Mbps (data used: 124.5 MB)                             
-    Packet Loss: Not available.
-    Result URL: https://www.speedtest.net/result/c/0ce5c428-677b-4775-add3-2ebc06f25eef    
-    
-    """
-
-    import re
+    """ Report internet speed """
 
     match = re.search(r'Download:\s+(\d+\.*\d+)\s+Mbps', internet_check_report)
     download_mbps = float(match.group(1)) if match else None
@@ -205,7 +191,7 @@ def report_speedtest(internet_check_report):
     match = re.search(r'Upload:\s+(\d+\.*\d+)\s+Mbps', internet_check_report)
     upload_mbps = float(match.group(1)) if match else None
 
-    print(download_mbps, upload_mbps)
+    #print(download_mbps, upload_mbps)
 
     #return
     
@@ -224,21 +210,17 @@ def report_speedtest(internet_check_report):
         aio.send(feed_internet_upload.key, f'{upload_mbps:.2f}')
 
 
+report = """
+   Speedtest by Ookla
 
-report =  """   Speedtest by Ookla
-
-        Server: fdcservers.net - London (id = 6032)
-            ISP: Hyperoptic Ltd
-        Latency:    2.33 ms  (0.41 ms jitter)
-
-    Download:    49.26 Mbps (data used: 59.1 MB)                             
-
-        Upload:    68 Mbps (data used: 124.5 MB)                             
-    Packet Loss: Not available.
-    Result URL: https://www.speedtest.net/result/c/0ce5c428-677b-4775-add3-2ebc06f25eef    
-    
-    """
-
+     Server: fdcservers.net - London (id = 6032)
+        ISP: Hyperoptic Ltd
+    Latency:     2.28 ms   (0.35 ms jitter)
+   Download:    32.81 Mbps (data used: 58.7 MB)                               
+     Upload:    65.73 Mbps (data used: 66.4 MB)                               
+Packet Loss: Not available.
+ Result URL: https://www.speedtest.net/result/c/ed9deb63-3a65-4a13-918b-2d4f9696cc2e
+"""
 
 
 def main():
@@ -275,7 +257,7 @@ def main():
     # Almost the same but sort by time
     build_message(url_status.values_sorted_by_time(), messages, status_codes=None)
 
-    msg = f"Running all checks took {time_ms:.2f} ms"
+    msg = f"\nRunning all connectivity checks took {time_ms:.2f} ms"
     print(msg)
     messages.append(msg)
 
@@ -288,9 +270,14 @@ def main():
     current_email_body = "\n".join(messages)
 
     # Add Speedtest result
-    print("Running Speedtest(s)...")
+    print("\nRunning Speedtest(s)...")
     
-    for station_id in [None, 24383, 12920, 7437, 6032]:
+    # Turned out that in practive the speed check is done against a chosen
+    # station and not the desired one. TBC.
+    # STATIONS = [None, 24383, 12920, 7437, 6032]
+    STATIONS = []
+
+    for station_id in STATIONS or [None]:
 
         with ManagedTimerSeconds(elapsed_secs):
             internet_check_report = speedtest_result(station_id)
