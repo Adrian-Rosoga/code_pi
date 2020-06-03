@@ -186,14 +186,12 @@ def report_speedtest(internet_check_report):
     """ Report internet speed """
 
     match = re.search(r'Download:\s+(\d+\.*\d+)\s+Mbps', internet_check_report)
-    download_mbps = float(match.group(1)) if match else None
+    download_mbps = float(match.group(1)) if match else 0
 
     match = re.search(r'Upload:\s+(\d+\.*\d+)\s+Mbps', internet_check_report)
-    upload_mbps = float(match.group(1)) if match else None
+    upload_mbps = float(match.group(1)) if match else 0
 
-    #print(download_mbps, upload_mbps)
-
-    #return
+    print(f'{download_mbps} Mbps download - {upload_mbps} Mbps upload')
     
     aio = Client(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
 
@@ -203,11 +201,8 @@ def report_speedtest(internet_check_report):
     feed_internet_download = aio.feeds(feed_internet_download_name)
     feed_internet_upload = aio.feeds(feed_internet_upload_name)
 
-    if download_mbps is not None:
-        aio.send(feed_internet_download.key, f'{download_mbps:.2f}')
-    
-    if upload_mbps is not None:
-        aio.send(feed_internet_upload.key, f'{upload_mbps:.2f}')
+    aio.send(feed_internet_download.key, f'{download_mbps:.2f}')   
+    aio.send(feed_internet_upload.key, f'{upload_mbps:.2f}')
 
 
 report = """
