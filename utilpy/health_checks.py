@@ -185,10 +185,10 @@ def speedtest_result(server_id=None):
 def report_speedtest(internet_check_report):
     """ Report internet speed """
 
-    match = re.search(r'Download:\s+(\d+\.*\d+)\s+Mbps', internet_check_report)
+    match = re.search(r'Download:\s+(\d*\.*\d*)\s+Mbps', internet_check_report)
     download_mbps = float(match.group(1)) if match else 0
 
-    match = re.search(r'Upload:\s+(\d+\.*\d+)\s+Mbps', internet_check_report)
+    match = re.search(r'Upload:\s+(\d*\.*\d*)\s+Mbps', internet_check_report)
     upload_mbps = float(match.group(1)) if match else 0
 
     print(f'{download_mbps} Mbps download - {upload_mbps} Mbps upload')
@@ -211,8 +211,8 @@ report = """
      Server: fdcservers.net - London (id = 6032)
         ISP: Hyperoptic Ltd
     Latency:     2.28 ms   (0.35 ms jitter)
-   Download:    32.81 Mbps (data used: 58.7 MB)                               
-     Upload:    65.73 Mbps (data used: 66.4 MB)                               
+   Download:    0.01 Mbps (data used: 58.7 MB)                               
+     Upload:    65. Mbps (data used: 66.4 MB)                               
 Packet Loss: Not available.
  Result URL: https://www.speedtest.net/result/c/ed9deb63-3a65-4a13-918b-2d4f9696cc2e
 """
@@ -220,6 +220,7 @@ Packet Loss: Not available.
 
 def main():
 
+    # Test parsing
     #report_speedtest(report)
     #return
 
