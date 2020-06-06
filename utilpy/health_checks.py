@@ -182,8 +182,8 @@ def speedtest_result(server_id=None):
     return cmd_output(cmd.split())
 
 
-def report_speedtest(internet_check_report):
-    """ Report internet speed """
+def parse_speedtest_report(internet_check_report):
+    """ Parse the Speedtest report """
 
     match = re.search(r'Download:\s+(\d*\.*\d*)\s+Mbps', internet_check_report)
     download_mbps = float(match.group(1)) if match else 0
@@ -192,6 +192,12 @@ def report_speedtest(internet_check_report):
     upload_mbps = float(match.group(1)) if match else 0
 
     print(f'{download_mbps} Mbps download - {upload_mbps} Mbps upload')
+
+    return download_mbps, upload_mbps
+
+
+def send_speedtest_report(download_mbps, upload_mbps):
+    """ Report internet speed to Adafruit IO """
     
     aio = Client(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
 
@@ -205,7 +211,55 @@ def report_speedtest(internet_check_report):
     aio.send(feed_internet_upload.key, f'{upload_mbps:.2f}')
 
 
-report = """
+def internet_speed_check():
+    ''' Run Internet speed check '''
+
+    print("\nRunning Speedtest(s)...")
+    
+    # Turned out that in practive the speed check is done against a chosen
+    # station and not the desired one. TBC.
+    # STATIONS = [None, 24383, 12920, 7437, 6032]
+    STATIONS = []
+    final_internet_check_report = ''
+
+    #for station_id in STATIONS or [None]:
+    station_id = None
+    try_number = 0
+    MAX_TRIES = 2
+    while try_number != MAX_TRIES:
+
+        try_number += 1
+
+        elapsed_secs = []
+        with ManagedTimerSeconds(elapsed_secs):
+            internet_check_report = speedtest_result(station_id)
+        
+        time_ms = elapsed_secs[0] * 1000
+
+        print(f"Running Speedtest attempt #{try_number}/{MAX_TRIES} for station {station_id} took {time_ms:.2f} ms. Results:\n{internet_check_report}")
+
+        final_internet_check_report += internet_check_report
+
+        # Report the download and upload speeds
+        try:
+            download_mbps, upload_mbps = parse_speedtest_report(internet_check_report)
+
+            if download_mbps > 0 and upload_mbps > 0:
+                send_speedtest_report(download_mbps, upload_mbps)
+                break
+            elif try_number == 1:
+                final_internet_check_report += '\n\nDownload or upload FAILED, trying again\n\n'
+                continue
+            else:
+                send_speedtest_report(download_mbps, upload_mbps)
+                break
+        except:
+            pass
+
+    return final_internet_check_report
+
+
+SAMPLE_REPORT = """
    Speedtest by Ookla
 
      Server: fdcservers.net - London (id = 6032)
@@ -221,8 +275,9 @@ Packet Loss: Not available.
 def main():
 
     # Test parsing
-    #report_speedtest(report)
-    #return
+    if False:
+        parse_speedtest_report(SAMPLE_REPORT)
+        return
 
     messages = ["\nHealth chech performed at " + str(datetime.datetime.now())]
 
@@ -265,29 +320,11 @@ def main():
 
     current_email_body = "\n".join(messages)
 
-    # Add Speedtest result
-    print("\nRunning Speedtest(s)...")
-    
-    # Turned out that in practive the speed check is done against a chosen
-    # station and not the desired one. TBC.
-    # STATIONS = [None, 24383, 12920, 7437, 6032]
-    STATIONS = []
+    # Run Internet speed test
+    internet_check_report = internet_speed_check()
 
-    for station_id in STATIONS or [None]:
-
-        with ManagedTimerSeconds(elapsed_secs):
-            internet_check_report = speedtest_result(station_id)
-        
-        time_ms = elapsed_secs[0] * 1000
-
-        print(f"Running Speedtest for station {station_id} took {time_ms:.2f} ms, results:\n{internet_check_report}")
-        current_email_body += "\n\n" + internet_check_report
-
-        # Report the download and upload speeds
-        try:
-            report_speedtest(internet_check_report)
-        except:
-            pass
+    # Add the Internet speed report
+    current_email_body += "\n\n" + internet_check_report
 
     # Send results
     if all(status_codes):
