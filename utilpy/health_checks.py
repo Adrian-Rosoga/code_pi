@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 import os
 import re
 import sys
@@ -15,7 +14,6 @@ from collections import namedtuple
 from http import HTTPStatus
 from util import cmd_output
 from Adafruit_IO import Client
-
 
 #
 # Adrian Rosoga, 18 Apr 2020
@@ -33,10 +31,10 @@ URLs = ['http://tides-env.m5xmmhjzmw.eu-west-2.elasticbeanstalk.com',
         ]
 
 TIMEOUT_SECS = 30
-
 STATUS_STORE_FILE = "/home/adi/code_local/health_check_status.dat"
-
 NUMBER_BACKLOG_CHECKS = 24
+MIN_DOWNLOAD_THRESHOLD_MBPS = 30
+MIN_UPLOAD_THRESHOLD_MBPS = 30
 
 URLData = namedtuple('URLData', 'url code ex_type ex_value data_length time_ms')
 
@@ -91,17 +89,14 @@ class URLsStatus:
         self._lock = threading.Lock()
 
     def update(self, url, code, ex_type, ex_value, data_length, time_ms):
-
         with self._lock:
             self.status.append(URLData(url, code, ex_type, ex_value, data_length, time_ms))
 
     def values(self):
-
         for url_status in self.status:
             yield url_status
 
     def values_sorted_by_time(self):
-
         for url_status in sorted(self.status, key=TimeFn):
             yield url_status
 
@@ -113,13 +108,11 @@ def check_web_site(url: str, urls_status):
 
     elapsed_secs = []
     with ManagedTimerSeconds(elapsed_secs):
-
         try:
             page = requests.get(url, timeout=TIMEOUT_SECS)
             code = page.status_code
         except requests.exceptions.RequestException as ex:
             code = None
-            ex_type = ex.__class__.__name__
             ex_type, ex_value, _ = sys.exc_info()
 
     time_ms = elapsed_secs[0] * 1000
@@ -216,8 +209,7 @@ def internet_speed_check():
 
     print("\nRunning Speedtest(s)...")
     
-    # Turned out that in practive the speed check is done against a chosen
-    # station and not the desired one. TBC.
+    # Turned out that in practive the speed check is done against a chosen station and not the desired one. TBC.
     # STATIONS = [None, 24383, 12920, 7437, 6032]
     STATIONS = []
     final_internet_check_report = ''
@@ -255,6 +247,12 @@ def internet_speed_check():
                 break
         except:
             pass
+
+    if download_mbps < MIN_DOWNLOAD_THRESHOLD_MBPS or upload_mbps <  MIN_UPLOAD_THRESHOLD_MBPS:
+        email_subject = "Warning: Slow Internet Upload or Download"
+        email_content = f'\nDownload speed is {download_mbps} mbps and threshold is {MIN_DOWNLOAD_THRESHOLD_MBPS} mbps\n'
+        email_content += f'Upload speed is {upload_mbps} mbps and threshold is {MIN_UPLOAD_THRESHOLD_MBPS} mbps\n'
+        send_email(email_subject, email_content)
 
     return final_internet_check_report
 
