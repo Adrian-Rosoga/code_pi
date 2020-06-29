@@ -8,6 +8,8 @@ Adrian Rosoga, 19 May 2014, refactored 29 Sep 2018
 import sys
 import os
 import subprocess as sp
+sys.path.append('/home/pi/code_pi/utilpy')
+from getch import getch  # noqa
 
 
 TIMELAPSE_CODE_PATH = '/home/pi/code_pi/timelapse'
@@ -54,7 +56,8 @@ def main():
     print('x) Exit')
 
     while True:
-        option = input('\nSelect photos directory: ')
+        print('\nSelect photos directory:', end=' ', flush=True)
+        option = getch()
         if option == 'x':
             sys.exit(0)
         elif option not in [str(nb + 1) for nb in range(len(MENU))]:
