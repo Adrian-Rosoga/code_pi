@@ -23,7 +23,7 @@ ON = True
 OFF = False
 PHOTO_DIR = '/tmp/timelapse'
 IMAGE_DESTINATION_DIR = '/media/pi/PI_STICK/awake_detector/'
-MIN_HOUR, MAX_HOUR = 5, 6
+MIN_HOUR, MAX_HOUR = 6, 8
 
 
 def get_exif(pil_image):
@@ -309,10 +309,11 @@ def check_continuously(verbose=False, force=False):
             # ADIRX: Refactor, extract loop in another method, try over the whole loop
             try:
                 response, eyes_open, tag = check(last_image, client, show=True)
-            except botocore.exceptions.EndpointConnectionError as e:
-                logging.error("%s" % e)
-                time.sleep(MINS_TO_SLEEP * 60)
-                continue
+            # TODO: NameError: global name 'botocore' is not defined
+            #except botocore.exceptions.EndpointConnectionError as e:
+            #    logging.error("%s" % e)
+            #    time.sleep(MINS_TO_SLEEP * 60)
+            #    continue
             except:
                 logging.info("Unexpected error:", sys.exc_info())
                 time.sleep(MINS_TO_SLEEP * 60)
