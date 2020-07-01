@@ -299,7 +299,7 @@ def check_continuously(verbose=False, force=False):
 
         timestamp = time.localtime()
 
-        if force or (MIN_HOUR <= timestamp.tm_hour <= MAX_HOUR):
+        if force or (MIN_HOUR <= timestamp.tm_hour < MAX_HOUR):
 
             last_image = get_image_filename()
             last_image = os.path.join(PHOTO_DIR, last_image)
@@ -309,11 +309,10 @@ def check_continuously(verbose=False, force=False):
             # ADIRX: Refactor, extract loop in another method, try over the whole loop
             try:
                 response, eyes_open, tag = check(last_image, client, show=True)
-            # TODO: NameError: global name 'botocore' is not defined
-            #except botocore.exceptions.EndpointConnectionError as e:
-            #    logging.error("%s" % e)
-            #    time.sleep(MINS_TO_SLEEP * 60)
-            #    continue
+            except botocore.exceptions.EndpointConnectionError as e:
+                logging.error("%s" % e)
+                time.sleep(MINS_TO_SLEEP * 60)
+                continue
             except:
                 logging.info("Unexpected error:", sys.exc_info())
                 time.sleep(MINS_TO_SLEEP * 60)
@@ -338,7 +337,7 @@ def check_continuously(verbose=False, force=False):
 
         else:
 
-            logging.info("Outside detection interval %s <= hour <= %s", MIN_HOUR, MAX_HOUR)
+            logging.info("Outside detection interval %s <= hour < %s", MIN_HOUR, MAX_HOUR)
 
         # logging.info('Sleeping now %s minutes...', MINS_TO_SLEEP)
         time.sleep(MINS_TO_SLEEP * 60)
