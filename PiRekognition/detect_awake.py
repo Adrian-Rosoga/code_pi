@@ -23,7 +23,7 @@ ON = True
 OFF = False
 PHOTO_DIR = '/tmp/timelapse'
 IMAGE_DESTINATION_DIR = '/media/pi/PI_STICK/awake_detector/'
-MIN_HOUR, MAX_HOUR = 5, 6
+MIN_HOUR, MAX_HOUR = 6, 8
 
 
 def get_exif(pil_image):
@@ -299,7 +299,7 @@ def check_continuously(verbose=False, force=False):
 
         timestamp = time.localtime()
 
-        if force or (MIN_HOUR <= timestamp.tm_hour <= MAX_HOUR):
+        if force or (MIN_HOUR <= timestamp.tm_hour < MAX_HOUR):
 
             last_image = get_image_filename()
             last_image = os.path.join(PHOTO_DIR, last_image)
@@ -337,7 +337,7 @@ def check_continuously(verbose=False, force=False):
 
         else:
 
-            logging.info("Outside detection interval %s <= hour <= %s", MIN_HOUR, MAX_HOUR)
+            logging.info("Outside detection interval %s <= hour < %s", MIN_HOUR, MAX_HOUR)
 
         # logging.info('Sleeping now %s minutes...', MINS_TO_SLEEP)
         time.sleep(MINS_TO_SLEEP * 60)
