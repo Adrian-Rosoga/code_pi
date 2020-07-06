@@ -22,8 +22,7 @@ from Adafruit_IO import Client
 ADAFRUIT_IO_KEY = os.environ['ADAFRUIT_IO_KEY']
 ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
 
-URLs = ['http://tides-env.m5xmmhjzmw.eu-west-2.elasticbeanstalk.com',
-        'https://arosoga.netlify.app',
+URLs = ['https://arosoga.netlify.app',
         'https://arosoga.netlify.com',
         'https://adrian-rosoga.github.io',
         'https://48124b7a.eu.ngrok.io/tl',
