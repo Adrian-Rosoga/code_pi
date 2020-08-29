@@ -10,6 +10,8 @@ import ssl
 import threading
 import pickle
 import datetime
+import yaml
+from dataclasses import dataclass
 from collections import namedtuple
 from http import HTTPStatus
 from util import cmd_output
@@ -22,18 +24,18 @@ from Adafruit_IO import Client
 ADAFRUIT_IO_KEY = os.environ['ADAFRUIT_IO_KEY']
 ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
 
-URLs = ['https://arosoga.netlify.app',
-        'https://arosoga.netlify.com',
-        'https://adrian-rosoga.github.io',
-        'https://48124b7a.eu.ngrok.io/tl',
-        'https://2a5bce0a.eu.ngrok.io/tl'
-        ]
 
-TIMEOUT_SECS = 30
-STATUS_STORE_FILE = "/home/adi/code_local/health_check_status.dat"
-NUMBER_BACKLOG_CHECKS = 24
-MIN_DOWNLOAD_THRESHOLD_MBPS = 30
-MIN_UPLOAD_THRESHOLD_MBPS = 30
+@dataclass
+class Config:
+    URLs = None
+    TIMEOUT_SECS = 30
+    STATUS_STORE_FILE = "/home/adi/code_local/health_check_status.dat"
+    NUMBER_BACKLOG_CHECKS = 24
+    MIN_DOWNLOAD_THRESHOLD_MBPS = 30
+    MIN_UPLOAD_THRESHOLD_MBPS = 30
+
+
+g_config = Config()
 
 URLData = namedtuple('URLData', 'url code ex_type ex_value data_length time_ms')
 
@@ -108,7 +110,7 @@ def check_web_site(url: str, urls_status):
     elapsed_secs = []
     with ManagedTimerSeconds(elapsed_secs):
         try:
-            page = requests.get(url, timeout=TIMEOUT_SECS)
+            page = requests.get(url, timeout=g_config.TIMEOUT_SECS)
             code = page.status_code
         except requests.exceptions.RequestException as ex:
             code = None
@@ -247,10 +249,10 @@ def internet_speed_check():
         except:
             pass
 
-    if download_mbps < MIN_DOWNLOAD_THRESHOLD_MBPS or upload_mbps <  MIN_UPLOAD_THRESHOLD_MBPS:
+    if download_mbps < g_config.MIN_DOWNLOAD_THRESHOLD_MBPS or upload_mbps <  g_config.MIN_UPLOAD_THRESHOLD_MBPS:
         email_subject = "Warning: Slow Internet Upload or Download"
-        email_content = f'\nDownload speed is {download_mbps} mbps and threshold is {MIN_DOWNLOAD_THRESHOLD_MBPS} mbps\n'
-        email_content += f'Upload speed is {upload_mbps} mbps and threshold is {MIN_UPLOAD_THRESHOLD_MBPS} mbps\n'
+        email_content = f'\nDownload speed is {download_mbps} mbps and threshold is {g_config.MIN_DOWNLOAD_THRESHOLD_MBPS} mbps\n'
+        email_content += f'Upload speed is {upload_mbps} mbps and threshold is {g_config.MIN_UPLOAD_THRESHOLD_MBPS} mbps\n'
         send_email(email_subject, email_content)
 
     return final_internet_check_report
@@ -271,10 +273,23 @@ Packet Loss: Not available.
 
 def main():
 
+    global g_config
+
     # Test parsing
     if False:
         parse_speedtest_report(SAMPLE_REPORT)
         return
+
+    with open('health_checks.yaml') as config_file:
+        data = yaml.full_load(config_file)
+
+    g_config.URLs = data['URLs']
+    print(g_config.URLs)
+    g_config.TIMEOUT_SECS = data['TIMEOUT_SECS']
+    g_config.STATUS_STORE_FILE = data['STATUS_STORE_FILE']
+    g_config.NUMBER_BACKLOG_CHECKS = data['NUMBER_BACKLOG_CHECKS']
+    g_config.MIN_DOWNLOAD_THRESHOLD_MBPS = data['MIN_DOWNLOAD_THRESHOLD_MBPS']
+    g_config.MIN_UPLOAD_THRESHOLD_MBPS = data['MIN_UPLOAD_THRESHOLD_MBPS']
 
     messages = ["\nHealth chech performed at " + str(datetime.datetime.now())]
 
@@ -284,7 +299,7 @@ def main():
     with ManagedTimerSeconds(elapsed_secs):
 
         threads = []
-        for url in URLs:
+        for url in g_config.URLs:
 
             print(f'Checking {url}...')
             thread = threading.Thread(target=check_web_site, args=(url, url_status))
@@ -310,7 +325,7 @@ def main():
     messages.append(msg)
 
     try:
-        with open(STATUS_STORE_FILE, "rb") as fd:
+        with open(g_config.STATUS_STORE_FILE, "rb") as fd:
             status_store = pickle.load(fd)
     except:
         status_store = StatusStore()
@@ -329,7 +344,7 @@ def main():
         status_store.add(current_email_body)
 
         # Send email right away if enough reports in the backlog, else just store the report
-        if len(status_store.statuses) == NUMBER_BACKLOG_CHECKS:
+        if len(status_store.statuses) == g_config.NUMBER_BACKLOG_CHECKS:
 
             subject = f'WebChecks OK: All {len(status_codes)} sites are UP!'
             print(f'Sending email to inform of {len(status_store.statuses)} successful checks so far...')
@@ -339,12 +354,12 @@ def main():
             send_email(subject, email_body)
 
             # Clear the status store
-            with open(STATUS_STORE_FILE, "wb") as fd:
+            with open(g_config.STATUS_STORE_FILE, "wb") as fd:
                 pickle.dump(StatusStore(), fd)
 
         else:
 
-            with open(STATUS_STORE_FILE, "wb") as fd:
+            with open(g_config.STATUS_STORE_FILE, "wb") as fd:
                 pickle.dump(status_store, fd)
 
             print(f'Not sending email report, {len(status_store.statuses)} checks OK so far...')
@@ -361,7 +376,7 @@ def main():
         send_email(subject, email_body)
 
         # Clear the status store
-        with open(STATUS_STORE_FILE, "wb") as fd:
+        with open(g_config.STATUS_STORE_FILE, "wb") as fd:
             pickle.dump(StatusStore(), fd)
 
 
