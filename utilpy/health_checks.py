@@ -39,16 +39,15 @@ g_config = Config()
 
 URLData = namedtuple('URLData', 'url code ex_type ex_value data_length time_ms')
 
-SPEEDTEST_SERVERS = { "Trunk Networks - London (id = 12920)": 12920,
-                      "Vox Telecom - London (id = 7437)": 7437,
-                      "fdcservers.net - London (id = 6032)": 6032,
-                      "Jump Networks Ltd - London (id = 24640)": 24640,
-                      "GTT.net - London (id = 24383)": 24383
-}
+SPEEDTEST_SERVERS = {"Trunk Networks - London (id = 12920)": 12920,
+                     "Vox Telecom - London (id = 7437)": 7437,
+                     "fdcservers.net - London (id = 6032)": 6032,
+                     "Jump Networks Ltd - London (id = 24640)": 24640,
+                     "GTT.net - London (id = 24383)": 24383
+                     }
 
 
 def HTTP_info_from_code(code: int):
-
     for status in HTTPStatus:
         if status.value == code:
             return status.name, status.phrase, status.description
@@ -103,7 +102,6 @@ class URLsStatus:
 
 
 def check_web_site(url: str, urls_status):
-
     ex_type = None
     ex_value = None
 
@@ -112,7 +110,7 @@ def check_web_site(url: str, urls_status):
         try:
             page = requests.get(url, timeout=g_config.TIMEOUT_SECS)
             code = page.status_code
-        except requests.exceptions.RequestException as ex:
+        except requests.exceptions.RequestException:
             code = None
             ex_type, ex_value, _ = sys.exc_info()
 
@@ -124,7 +122,6 @@ def check_web_site(url: str, urls_status):
 
 
 def send_email(subject, message):
-
     port = os.environ['SMTP_PORT']
     smtp_server = os.environ['SMTP_SERVER']
     sender_email = os.environ['SMTP_SENDER_EMAIL']
@@ -143,7 +140,6 @@ def send_email(subject, message):
 
 
 def build_message(values, messages=None, status_codes=None):
-
     for status in values:
 
         url, status_code, ex_type, ex_value, data_length, time_ms = status
@@ -165,13 +161,12 @@ def build_message(values, messages=None, status_codes=None):
 
 
 def speedtest_result(server_id=None):
-
     cmd = "/usr/bin/speedtest --progress=no"
 
     if server_id is not None:
         cmd = cmd + f" --server-id={server_id}"
 
-    #print(f"cmd={cmd}")
+    # print(f"cmd={cmd}")
 
     return cmd_output(cmd.split())
 
@@ -192,7 +187,7 @@ def parse_speedtest_report(internet_check_report):
 
 def send_speedtest_report(download_mbps, upload_mbps):
     """ Report internet speed to Adafruit IO """
-    
+
     aio = Client(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
 
     feed_internet_download_name = "internet-download"
@@ -201,24 +196,27 @@ def send_speedtest_report(download_mbps, upload_mbps):
     feed_internet_download = aio.feeds(feed_internet_download_name)
     feed_internet_upload = aio.feeds(feed_internet_upload_name)
 
-    aio.send(feed_internet_download.key, f'{download_mbps:.2f}')   
+    aio.send(feed_internet_download.key, f'{download_mbps:.2f}')
     aio.send(feed_internet_upload.key, f'{upload_mbps:.2f}')
 
 
 def internet_speed_check():
-    ''' Run Internet speed check '''
+    """ Run Internet speed check """
 
     print("\nRunning Speedtest(s)...")
-    
-    # Turned out that in practive the speed check is done against a chosen station and not the desired one. TBC.
+
+    # Turned out that in practice the speed check is done against a chosen station and not the desired one. TBC.
     # STATIONS = [None, 24383, 12920, 7437, 6032]
     STATIONS = []
     final_internet_check_report = ''
 
-    #for station_id in STATIONS or [None]:
+    # for station_id in STATIONS or [None]:
     station_id = None
     try_number = 0
     MAX_TRIES = 2
+    download_mbps = 0
+    upload_mbps = 0
+
     while try_number != MAX_TRIES:
 
         try_number += 1
@@ -226,10 +224,11 @@ def internet_speed_check():
         elapsed_secs = []
         with ManagedTimerSeconds(elapsed_secs):
             internet_check_report = speedtest_result(station_id)
-        
+
         time_ms = elapsed_secs[0] * 1000
 
-        print(f"Running Speedtest attempt #{try_number}/{MAX_TRIES} for station {station_id} took {time_ms:.2f} ms. Results:\n{internet_check_report}")
+        print(
+            f"Running Speedtest attempt #{try_number}/{MAX_TRIES} for station {station_id} took {time_ms:.2f} ms. Results:\n{internet_check_report}")
 
         final_internet_check_report += internet_check_report
 
@@ -249,7 +248,7 @@ def internet_speed_check():
         except:
             pass
 
-    if download_mbps < g_config.MIN_DOWNLOAD_THRESHOLD_MBPS or upload_mbps <  g_config.MIN_UPLOAD_THRESHOLD_MBPS:
+    if download_mbps < g_config.MIN_DOWNLOAD_THRESHOLD_MBPS or upload_mbps < g_config.MIN_UPLOAD_THRESHOLD_MBPS:
         email_subject = "Warning: Slow Internet Upload or Download"
         email_content = f'\nDownload speed is {download_mbps} mbps and threshold is {g_config.MIN_DOWNLOAD_THRESHOLD_MBPS} mbps\n'
         email_content += f'Upload speed is {upload_mbps} mbps and threshold is {g_config.MIN_UPLOAD_THRESHOLD_MBPS} mbps\n'
@@ -272,7 +271,6 @@ Packet Loss: Not available.
 
 
 def main():
-
     global g_config
 
     # Test parsing
@@ -300,7 +298,6 @@ def main():
 
         threads = []
         for url in g_config.URLs:
-
             print(f'Checking {url}...')
             thread = threading.Thread(target=check_web_site, args=(url, url_status))
             threads.append(thread)
@@ -314,7 +311,7 @@ def main():
     status_codes = []
 
     build_message(url_status.values(), messages=None, status_codes=status_codes)
-    
+
     messages.append("\nOrdered by response time:")
 
     # Almost the same but sort by time
@@ -363,11 +360,11 @@ def main():
                 pickle.dump(status_store, fd)
 
             print(f'Not sending email report, {len(status_store.statuses)} checks OK so far...')
-    
+
     else:
 
         subject = f'WebChecks FAILED for at least one site!'
-        
+
         email_body = "\n\n======================\n".join(status_store.statuses)
 
         email_body += "\n\n=== FAILED CHECKS ===================\n" + current_email_body
@@ -381,5 +378,4 @@ def main():
 
 
 if __name__ == '__main__':
-
     main()
