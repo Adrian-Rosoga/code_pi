@@ -278,7 +278,9 @@ def main():
         parse_speedtest_report(SAMPLE_REPORT)
         return
 
-    with open('health_checks.yaml') as config_file:
+    script_path = __file__.rsplit('/', 1)[0]
+
+    with open(script_path + '/health_checks.yaml') as config_file:
         data = yaml.full_load(config_file)
 
     g_config.URLs = data['URLs']
