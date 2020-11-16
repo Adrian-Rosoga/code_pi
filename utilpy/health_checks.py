@@ -144,15 +144,21 @@ def build_message(values, messages=None, status_codes=None):
 
         url, status_code, ex_type, ex_value, data_length, time_ms = status
 
-        if status_code != requests.codes.ok:
+        if status_code == requests.codes.ok:
+            if status_codes is not None:
+                status_codes.append(True)
+            msg = f'{url} UP! Code {status_code}. Data length = {data_length}. Took {time_ms:.2f} ms'
+        elif status_code == requests.codes.unauthorized:
+            if status_codes is not None:
+                status_codes.append(True)
+            msg = f'{url} UP (Unauthorized)! Code {status_code}. Data length = {data_length}. Took {time_ms:.2f} ms'
+        else:
             if status_codes is not None:
                 status_codes.append(False)
             HTTPName, HTTPPhrase, HTTPDescription = HTTP_info_from_code(status_code)
             msg = f'{url} DOWN! Code {status_code}. Name \'{HTTPName}\'. Phrase \'{HTTPPhrase}\'. Description \'{HTTPDescription}\'. Ex_type {ex_type}. Ex_value \'{ex_value}\'. Took {time_ms:.2f} ms'
-        else:
-            if status_codes is not None:
-                status_codes.append(True)
-            msg = f'{url} UP! Code {status_code}. Data length = {data_length}. Took {time_ms:.2f} ms'
+
+
 
         if messages is None:
             print(msg)
@@ -213,7 +219,7 @@ def internet_speed_check():
     # for station_id in STATIONS or [None]:
     station_id = None
     try_number = 0
-    MAX_TRIES = 2
+    MAX_TRIES = 3
     download_mbps = 0
     upload_mbps = 0
 
