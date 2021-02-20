@@ -1,2 +1,4 @@
 portalocker
 pynput
+Adafruit_DHT
+
