@@ -3,4 +3,4 @@
 # For Adafruit IO keys
 source /home/pi/.bashrc.pi
 
-./climate.py
+python3 ./climate.py
