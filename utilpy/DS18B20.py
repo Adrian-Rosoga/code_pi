@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 Returns temperature from a DS18B20 sensor or None if no sensors attached or more than one sensors found
 

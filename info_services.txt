@@ -9,3 +9,9 @@ sudo systemctl status pi_ws.service
 
 # Only on pi-other
 sudo systemctl status energenie_webserver.service
+
+# On pi-cfr1 at 10 CFR
+sudo systemctl status climate_DHT22.service
+
+# On pi-other at 10 CFR
+sudo systemctl status climate_DS18B20.service
