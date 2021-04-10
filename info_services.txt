@@ -1,11 +1,18 @@
-# On all pis
+# CPU service - On all pis
 sudo systemctl status cpu.service
 
-# Only on Pi3
+# Only on Pi3 - Rafi's Pi - uses HTU21D
 sudo systemctl status climate.service
 
+# Web server based on Flask
 # On pi3, pi-tl, pi-other
 sudo systemctl status pi_ws.service
+
+# On pi-other
+sudo systemctl status climate_DS18B20.service
+
+# On pi-other
+sudo systemctl status tl.service
 
 # Only on pi-other
 sudo systemctl status energenie_webserver.service

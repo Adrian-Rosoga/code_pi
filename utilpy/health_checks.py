@@ -21,6 +21,13 @@ from Adafruit_IO import Client
 # Adrian Rosoga, 18 Apr 2020
 #
 
+'''
+TODO:
+Once in a while speedtest executable gets updated. It asks about accepting licence. This makes it to fail.
+Behaviour: It asks for the license, type YES, it then proceeds with the running the speed test.
+"Do you accept the license? [type YES to accept]: "
+'''
+
 ADAFRUIT_IO_KEY = os.environ['ADAFRUIT_IO_KEY']
 ADAFRUIT_IO_USERNAME = os.environ['ADAFRUIT_IO_USERNAME']
 
@@ -157,8 +164,6 @@ def build_message(values, messages=None, status_codes=None):
                 status_codes.append(False)
             HTTPName, HTTPPhrase, HTTPDescription = HTTP_info_from_code(status_code)
             msg = f'{url} DOWN! Code {status_code}. Name \'{HTTPName}\'. Phrase \'{HTTPPhrase}\'. Description \'{HTTPDescription}\'. Ex_type {ex_type}. Ex_value \'{ex_value}\'. Took {time_ms:.2f} ms'
-
-
 
         if messages is None:
             print(msg)
