@@ -22,3 +22,12 @@ sudo systemctl status climate_DHT22.service
 
 # On pi-other at 10 CFR
 sudo systemctl status climate_DS18B20.service
+
+### How to remove a service
+
+exit
+
+systemctl stop [servicename]
+systemctl disable [servicename]
+systemctl daemon-reload
+systemctl reset-failed
