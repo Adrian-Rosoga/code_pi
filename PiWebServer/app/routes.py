@@ -17,8 +17,8 @@ OUT_OF_HOURS_IMAGE_PATH = '/home/pi/code_pi/timelapse/out_of_hours.jpg'
 
 
 class Registry(object):
-    title = "TITLE"
-    refresh = 10
+    title = "Thames"
+    refresh = 1200
     port = 8007
 
 
